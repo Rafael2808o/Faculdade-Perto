@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: faculdade-perto
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: master
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3333"
+      - key: DATA_MODE
+        value: database
+      - key: DATABASE_PROVIDER
+        value: cockroach
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DATABASE_POOL_MAX
+        value: "3"
+      - key: DATABASE_CONNECTION_TIMEOUT_MS
+        value: "30000"
+      - key: DATABASE_IDLE_TIMEOUT_MS
+        value: "30000"
+      - key: DATABASE_STATEMENT_TIMEOUT_MS
+        value: "300000"
+      - key: PUBLIC_SITE_URL
+        value: https://faculdade-perto.onrender.com
+      - key: WEB_ORIGIN
+        value: https://faculdade-perto.onrender.com
+      - key: TRUST_PROXY
+        value: "true"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "30"
