@@ -1,10 +1,8 @@
 import { config } from 'dotenv';
 import pg from 'pg';
-import { from as copyFrom, to as copyTo } from 'pg-copy-streams';
 import { resolve } from 'node:path';
-import { pipeline } from 'node:stream/promises';
 
-config({ path: resolve(process.cwd(), '.env') });
+config({ path: resolve(process.cwd(), '.env'), quiet: true });
 
 const sourceUrl = process.env.SOURCE_DATABASE_URL;
 const targetUrl = process.env.DATABASE_URL;
@@ -62,26 +60,23 @@ async function copyTable(table) {
   }
 
   while (copied < sourceCount) {
-    const ids = await source.query(`SELECT id::text id FROM ${quote(table)} WHERE id > $1 ORDER BY id LIMIT $2`, [cursor, batchSize]);
-    if (!ids.rowCount) throw new Error(`${table}: não foi possível localizar o próximo lote após id=${cursor}.`);
-    const batchEnd = Number(ids.rows.at(-1).id);
-    const sourceClient = await source.connect();
-    const targetClient = await target.connect();
-    try {
-      await targetClient.query('BEGIN');
-      const output = sourceClient.query(copyTo(`COPY (SELECT ${list} FROM ${quote(table)} WHERE id > ${cursor} AND id <= ${batchEnd} ORDER BY id) TO STDOUT WITH (FORMAT csv)`));
-      const input = targetClient.query(copyFrom(`COPY ${quote(table)} (${list}) FROM STDIN WITH (FORMAT csv)`));
-      await pipeline(output, input);
-      await targetClient.query('COMMIT');
-    } catch (error) {
-      await targetClient.query('ROLLBACK');
-      throw error;
-    } finally {
-      sourceClient.release();
-      targetClient.release();
-    }
+    const safeBatchSize = Math.min(batchSize, Math.max(1, Math.floor(50_000 / shared.length)));
+    const rows = await source.query(`SELECT ${list} FROM ${quote(table)} WHERE id > $1 ORDER BY id LIMIT $2`, [cursor, safeBatchSize]);
+    if (!rows.rowCount) throw new Error(`${table}: não foi possível localizar o próximo lote após id=${cursor}.`);
+    const batchEnd = Number(rows.rows.at(-1).id);
+    const values = [];
+    const placeholders = rows.rows.map((row) => `(${shared.map((column) => {
+      values.push(row[column]);
+      return `$${values.length}`;
+    }).join(',')})`).join(',');
+    const mutableColumns = shared.filter((column) => column !== 'id');
+    const conflictAction = mutableColumns.length
+      ? `DO UPDATE SET ${mutableColumns.map((column) => `${quote(column)}=excluded.${quote(column)}`).join(',')}`
+      : 'DO NOTHING';
+    await target.query(`INSERT INTO ${quote(table)} (${list}) VALUES ${placeholders}
+      ON CONFLICT (${quote('id')}) ${conflictAction}`, values);
     cursor = batchEnd;
-    copied += ids.rowCount;
+    copied += rows.rowCount;
     if (copied === sourceCount || copied % 25000 < batchSize) {
       console.log(`${table}: ${copied.toLocaleString('pt-BR')} / ${sourceCount.toLocaleString('pt-BR')}`);
     }
