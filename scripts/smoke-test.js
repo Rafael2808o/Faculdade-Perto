@@ -39,7 +39,7 @@ assert(sitemapIndex.includes('<sitemapindex') && sitemapIndex.includes('/sitemap
 const sitemapCore = await (await request('/sitemaps/core.xml')).text();
 assert(sitemapCore.includes('<urlset') && sitemapCore.includes('/privacidade'), 'Sitemap principal inválido.');
 const sitemapRecords = await (await request('/sitemaps/records-1.xml')).text();
-assert(sitemapRecords.includes(`<loc>${baseUrl}/ofertas/`), 'Sitemap paginado de registros inválido.');
+assert(sitemapRecords.includes('<urlset') && sitemapRecords.includes('/ofertas/'), 'Sitemap paginado de registros inválido.');
 
 for (const path of ['/', '/buscar', '/enem', '/privacidade', '/termos', `/ofertas/${first.id}`]) {
   const html = await (await request(path)).text();

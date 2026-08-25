@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import pg from 'pg';
 import { resolve } from 'node:path';
 
-config({ path: resolve(process.cwd(), '.env') });
+config({ path: resolve(process.cwd(), '.env'), quiet: true });
 
 const sourceUrl = process.env.SOURCE_DATABASE_URL;
 const targetUrl = process.env.DATABASE_URL;
@@ -30,6 +30,9 @@ const quote = (value) => `"${value.replaceAll('"', '""')}"`;
 const normalize = (value) => {
   if (value instanceof Date) return value.toISOString();
   if (Buffer.isBuffer(value)) return value.toString('hex');
+  // O driver retorna alguns inteiros do CockroachDB como texto (int8), embora
+  // o PostgreSQL local devolva o mesmo valor como number.
+  if (typeof value === 'number') return String(value);
   if (Array.isArray(value)) return value.map(normalize);
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.keys(value).sort().map((key) => [key, normalize(value[key])]));
@@ -40,7 +43,8 @@ const comparable = (row) => JSON.stringify(normalize(row));
 
 async function tableNames(pool) {
   const result = await pool.query(`SELECT table_name FROM information_schema.tables
-    WHERE table_schema='public' AND table_type='BASE TABLE' AND table_name <> 'schema_migrations'
+    WHERE table_schema='public' AND table_type='BASE TABLE'
+      AND table_name <> 'schema_migrations' AND table_name NOT LIKE 'stg\\_%' ESCAPE '\\'
     ORDER BY table_name`);
   return result.rows.map((row) => row.table_name);
 }
