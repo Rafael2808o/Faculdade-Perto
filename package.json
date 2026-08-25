@@ -1,0 +1,35 @@
+{
+  "name": "faculdade-perto",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @faculdade-perto/api\" \"npm run dev -w @faculdade-perto/web\"",
+    "dev:national": "npm run db:local:start && npm run dev",
+    "build": "npm run build -w @faculdade-perto/web",
+    "test": "npm run test -w @faculdade-perto/api && npm run test -w @faculdade-perto/web",
+    "db:migrate": "npm run db:migrate -w @faculdade-perto/api",
+    "db:seed": "npm run db:seed -w @faculdade-perto/api",
+    "db:local:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local-postgres.ps1",
+    "db:local:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local-postgres.ps1",
+    "import:censo": "npm run import:censo -w @faculdade-perto/api",
+    "import:municipalities": "npm run import:municipalities -w @faculdade-perto/api",
+    "db:migrate:cockroach:data": "node scripts/migrate-postgres-to-cockroach.js",
+    "db:migrate:cockroach:catalog": "node scripts/migrate-catalog-with-molt.js",
+    "db:migrate:cockroach:catalog:resume": "node scripts/resume-catalog-with-molt.js",
+    "db:migrate:cockroach:source-records": "node scripts/migrate-source-records-with-molt.js",
+    "db:verify:cockroach": "node scripts/verify-database-parity.js",
+    "test:smoke": "node scripts/smoke-test.js",
+    "start": "npm run start -w @faculdade-perto/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "playwright-core": "^1.62.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

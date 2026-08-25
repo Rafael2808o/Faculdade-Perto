@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { preserveCompetitionModalities } from './cutoffService.js';
+describe('notas de corte',()=>{it('nunca agrega modalidades de concorrência',()=>{const rows=[{competition_modality:'ampla',score:'720.5'},{competition_modality:'cota_escola_publica',score:'680.1'}];const result=preserveCompetitionModalities(rows);expect(result).toHaveLength(2);expect(result.map((x)=>x.competition_modality)).toEqual(['ampla','cota_escola_publica']);expect(result.find((x)=>x.score===700.3)).toBeUndefined()})});

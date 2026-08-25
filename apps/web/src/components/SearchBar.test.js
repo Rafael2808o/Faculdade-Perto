@@ -1,0 +1,3 @@
+import { describe,expect,it } from 'vitest';
+import { buildSearchParams,readSearchFilters } from '../lib/searchParams.js';
+describe('parâmetros da busca',()=>{it('trata sigla de duas letras como UF',()=>{const params=buildSearchParams('Medicina','sp');expect(params.get('state')).toBe('SP');expect(params.has('city')).toBe(false)});it('mantém nomes completos como cidade',()=>{const params=buildSearchParams('','São Paulo');expect(params.get('city')).toBe('São Paulo');expect(params.has('state')).toBe(false)});it('preserva a UF ao montar os filtros enviados à API',()=>{const filters=readSearchFilters(new URLSearchParams('q=Medicina&state=SP'));expect(filters).toMatchObject({q:'Medicina',state:'SP',city:''})})});

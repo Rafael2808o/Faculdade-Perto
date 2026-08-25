@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+coverage/
+*.log
+.DS_Store
+data/*.zip
+data/*.csv
+!data/.gitkeep
+.local-postgres/
+.local-data/
+.tools/
+.profile-repo/

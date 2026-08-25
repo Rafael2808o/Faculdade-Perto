@@ -1,0 +1,2 @@
+import { authenticate as resolveUser } from '../services/authService.js';import { AppError } from '../errors/AppError.js';
+export async function authenticate(req,_res,next){try{const header=req.headers.authorization||'';const token=header.startsWith('Bearer ')?header.slice(7):null;const user=await resolveUser(token);if(!user)throw new AppError('AUTENTICACAO_NECESSARIA','Entre na sua conta para continuar.',{status:401,hint:'Faça login e envie novamente.'});req.user=user;req.authToken=token;next()}catch(e){next(e)}}

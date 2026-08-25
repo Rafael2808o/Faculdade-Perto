@@ -1,0 +1,3 @@
+import { describe,expect,it } from 'vitest';import { calculateEnemScore } from './enemService.js';
+const scores={languages:600,humanities:650,naturalSciences:700,mathematics:750,essay:800};
+describe('calculateEnemScore',()=>{it('calcula média simples',()=>{expect(calculateEnemScore({scores}).score).toBe(700)});it('calcula média ponderada',()=>{const result=calculateEnemScore({scores,weights:{languages:1,humanities:1,naturalSciences:1,mathematics:2,essay:1}});expect(result.score).toBe(708.33);expect(result.method).toBe('ponderada')});it('mostra aviso obrigatório para treineiro',()=>{expect(calculateEnemScore({scores,trainee:true}).traineeWarning).toMatch(/treineiro/i)})});

@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { dataField,unconfirmedField } from './dataField.js';
+describe('dataField',()=>{it('impede confirmado sem fonte',()=>{expect(()=>dataField({value:10,status:'confirmado',updatedAt:new Date()})).toThrow(/fonte/i)});it('exige motivo para ausência',()=>{expect(()=>dataField({status:'nao_confirmado'})).toThrow(/motivo/i)});it('serializa ausência sem estimativa',()=>{expect(unconfirmedField('Fonte não publica o campo')).toEqual(expect.objectContaining({value:null,status:'nao_confirmado',reason:'Fonte não publica o campo'}))})});

@@ -1,0 +1,3 @@
+const UF_PATTERN=/^[a-zA-Z]{2}$/;
+export function buildSearchParams(course,placeValue){const qs=new URLSearchParams();if(course.trim())qs.set('q',course.trim());const place=placeValue.trim();if(place){if(UF_PATTERN.test(place))qs.set('state',place.toUpperCase());else qs.set('city',place)}return qs}
+export function readSearchFilters(params,userLocation){return {q:params.get('q')||'',city:params.get('city')||'',state:params.get('state')||'',network:params.get('network')||'',modality:params.get('modality')||'',degree:params.get('degree')||'',sort:params.get('sort')||'relevance',page:Number(params.get('page')||1),limit:30,...(userLocation?{lat:userLocation.lat,lng:userLocation.lng}:{})}}

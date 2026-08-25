@@ -1,0 +1,8 @@
+:root{
+  --paper:#faf9f6;--paper-raised:#fffefa;--ink:#182425;--ink-soft:#536164;--line:#d8ded9;
+  --primary:#123f46;--primary-strong:#0a3137;--primary-soft:#dce9e7;--primary-on:#ffffff;
+  --moss:#516b45;--moss-soft:#e6eee1;--amber:#a66a14;--amber-soft:#fbedd2;--terracotta:#a64e38;--terracotta-soft:#f7e5df;
+  --focus:#147c8b;--shadow:0 14px 38px rgba(24,36,37,.09);--shadow-sm:0 4px 18px rgba(24,36,37,.07);
+  --radius-sm:.55rem;--radius:.9rem;--radius-lg:1.4rem;--content:1200px;
+  --serif:'Fraunces',Georgia,serif;--sans:'Work Sans',system-ui,sans-serif;
+}

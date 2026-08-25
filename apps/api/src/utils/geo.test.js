@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { distanceKm } from './geo.js';
+describe('distanceKm',()=>{it('calcula distância geodésica conhecida',()=>{const campinas={lat:-22.9056,lng:-47.0608};const saoPaulo={lat:-23.5505,lng:-46.6333};expect(distanceKm(campinas,saoPaulo)).toBeGreaterThan(80);expect(distanceKm(campinas,saoPaulo)).toBeLessThan(100)});it('retorna zero para o mesmo ponto',()=>expect(distanceKm({lat:0,lng:0},{lat:0,lng:0})).toBe(0))});
