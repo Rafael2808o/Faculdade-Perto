@@ -7,6 +7,11 @@ export const institutionQuery = paginationSchema.extend({ q:text, state:z.string
 export const courseQuery = paginationSchema.extend({ q:text, degree:z.enum(['bacharelado','licenciatura','tecnologo','abi','nao_confirmado']).optional(), modality:z.enum(['presencial','ead']).optional() });
 export const searchQuery = courseQuery.extend({
   state:z.string().trim().length(2).optional(), city:text, network:z.enum(['publica','privada']).optional(),
+  organization:z.enum(['universidade','centro_universitario','faculdade','instituto_federal','cefet']).optional(),
+  category:z.enum(['publica_federal','publica_estadual','publica_municipal','privada_com_fins','privada_sem_fins','especial']).optional(),
+  free:z.enum(['sim','nao']).optional(), shift:z.enum(['diurno','noturno']).optional(),
+  dimension:z.enum(['municipio','ead_brasil','ead_brasil_agregado','ead_exterior']).optional(),
+  minSeats:z.coerce.number().int().min(0).max(100000).optional(),
   sort:z.enum(['relevance','name','distance','seats']).default('relevance'),
   lat:z.coerce.number().min(-90).max(90).optional(), lng:z.coerce.number().min(-180).max(180).optional()
 }).refine((value)=>(value.lat===undefined)===(value.lng===undefined),{message:'Envie latitude e longitude juntas.'}).refine((value)=>value.sort!=='distance'||value.lat!==undefined,{message:'A ordenação por distância exige sua localização.'});

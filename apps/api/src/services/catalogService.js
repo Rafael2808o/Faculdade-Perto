@@ -50,9 +50,10 @@ function searchDto(row) {
   return {
     resultType: 'census_course_record', id: row.id,
     course: { id: row.course_id, name: row.canonical_name, slug: row.course_slug, cineCode: row.cine_code },
-    institution: { id: row.institution_id, name: row.institution_name, acronym: row.acronym, slug: row.institution_slug, network: row.education_network, administrativeCategory: row.administrative_category },
+    institution: { id: row.institution_id, name: row.institution_name, acronym: row.acronym, slug: row.institution_slug, network: row.education_network, administrativeCategory: row.administrative_category, academicOrganization: row.academic_organization },
     location: { city: row.municipality_name, citySlug: row.municipality_slug, state: row.state_abbreviation, lat: row.lat === null ? null : Number(row.lat), lng: row.lng === null ? null : Number(row.lng), distanceKm: row.distance_km === null || row.distance_km === undefined ? null : Number(row.distance_km), status: 'nao_confirmado', reason: row.location_note || 'O Censo não identifica o campus desta oferta.' },
-    degree: importedField(row.degree,snapshot), modality: importedField(row.modality,snapshot), free: importedField(row.free_indicator,snapshot),
+    degree: importedField(row.degree,snapshot), modality: importedField(row.modality,snapshot), dimension: importedField(row.dimension,snapshot), free: importedField(row.free_indicator,snapshot),
+    shifts: importedField({ daytimeSeats: row.daytime_seats === null || row.daytime_seats === undefined ? null : Number(row.daytime_seats), nighttimeSeats: row.nighttime_seats === null || row.nighttime_seats === undefined ? null : Number(row.nighttime_seats) },snapshot),
     censusSeats: importedField(row.census_seats === null ? null : Number(row.census_seats),snapshot),
     tuition: unconfirmedField('O Censo INEP 2024 não publica mensalidades.'),
     cutoff: unconfirmedField('Nenhuma nota de corte por edição e modalidade foi vinculada a este registro.'),

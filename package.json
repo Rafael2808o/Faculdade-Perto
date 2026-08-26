@@ -22,7 +22,9 @@
     "db:migrate:cockroach:catalog:resume": "node scripts/resume-catalog-with-molt.js",
     "db:migrate:cockroach:source-records": "node scripts/migrate-source-records-with-molt.js",
     "db:verify:cockroach": "node scripts/verify-database-parity.js",
+    "db:verify:facets": "node scripts/verify-search-facets.js",
     "test:smoke": "node scripts/smoke-test.js",
+    "test:production": "node --use-system-ca scripts/audit-production.js",
     "start": "npm run start -w @faculdade-perto/api"
   },
   "devDependencies": {

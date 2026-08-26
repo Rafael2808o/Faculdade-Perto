@@ -25,6 +25,22 @@ assert(search.pagination?.total > 0, 'A busca nacional não retornou resultados.
 assert(search.data.length > 0 && search.data.every((item) => item.location.state === 'SP'), 'O filtro de UF não foi respeitado.');
 const first = search.data[0];
 
+const filtered = await (await request('/api/v1/search?q=Medicina&state=SP&network=publica&modality=presencial&degree=bacharelado&organization=universidade&category=publica_estadual&free=sim&shift=diurno&dimension=municipio&minSeats=1&sort=seats&limit=5')).json();
+assert(filtered.data.length > 0, 'A combinação completa de filtros não retornou resultados.');
+assert(filtered.data.every((item) => item.location.state === 'SP'
+  && item.institution.network === 'publica'
+  && item.institution.academicOrganization === 'Universidade'
+  && item.institution.administrativeCategory === 'Pública Estadual'
+  && item.modality.value === 'presencial'
+  && item.degree.value === 'bacharelado'
+  && item.free.value === true
+  && item.dimension.value === 'municipio'
+  && item.shifts.value.daytimeSeats > 0
+  && item.censusSeats.value >= 1), 'Um ou mais filtros avançados não foram respeitados.');
+
+const nighttime = await (await request('/api/v1/search?shift=noturno&sort=seats&limit=5')).json();
+assert(nighttime.data.length > 0 && nighttime.data.every((item) => item.shifts.value.nighttimeSeats > 0), 'O filtro de turno noturno não foi respeitado.');
+
 const record = await (await request(`/api/v1/catalog-records/${first.id}`)).json();
 assert(record.data?.id === first.id, 'O detalhe do registro diverge da busca.');
 await request(`/api/v1/institutions/${first.institution.id}?page=1&limit=5`);

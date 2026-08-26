@@ -17,6 +17,23 @@ export function parseLocationFilter(city, state) {
   return { city: cityName, state: stateCode };
 }
 
+export const institutionOrganizationValues = Object.freeze({
+  universidade: 'Universidade',
+  centro_universitario: 'Centro Universitário',
+  faculdade: 'Faculdade',
+  instituto_federal: 'Instituto Federal',
+  cefet: 'CEFET'
+});
+
+export const administrativeCategoryValues = Object.freeze({
+  publica_federal: 'Pública Federal',
+  publica_estadual: 'Pública Estadual',
+  publica_municipal: 'Pública Municipal',
+  privada_com_fins: 'Privada com fins lucrativos',
+  privada_sem_fins: 'Privada sem fins lucrativos',
+  especial: 'Especial'
+});
+
 export async function listInstitutions({ page, limit, q, state, city, network }) {
   const values = [];
   const where = [];
@@ -68,16 +85,30 @@ export async function listCourses({ page, limit, q, degree, modality }) {
     GROUP BY c.id ORDER BY c.canonical_name LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
 }
 
-export async function searchCatalog({ q, city, state, network, modality, degree, page, limit, sort, lat, lng }) {
+export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, page, limit, sort, lat, lng }) {
   const values = [];
   const where = [];
   let relevanceOrder = 'c.canonical_name,i.name';
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
   if (q) {
     const normalizedQuery = foldText(q);
-    values.push(`%${normalizedQuery}%`, `%${normalizedQuery}%`, normalizedQuery, `${normalizedQuery}%`);
-    where.push(`(${foldedSql('c.canonical_name')} LIKE $${values.length - 3} OR ${foldedSql('i.name')} LIKE $${values.length - 2})`);
-    relevanceOrder = `CASE WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length - 1} THEN 0 WHEN ${foldedSql('i.name')} LIKE $${values.length - 1} THEN 1 WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length} THEN 2 WHEN ${foldedSql('i.name')} LIKE $${values.length} THEN 3 ELSE 4 END,c.canonical_name,i.name`;
+    const like=`%${normalizedQuery}%`;
+    const [matchedCourses,matchedInstitutions]=await Promise.all([
+      pool.query(`SELECT id FROM courses WHERE ${foldedSql('canonical_name')} LIKE $1`,[like]),
+      pool.query(`SELECT id FROM institutions WHERE ${foldedSql('name')} LIKE $1`,[like])
+    ]);
+    const courseIds=matchedCourses.rows.map(({id})=>String(id));
+    const institutionIds=matchedInstitutions.rows.map(({id})=>String(id));
+    if (!courseIds.length&&!institutionIds.length) return [];
+    if (courseIds.length&&institutionIds.length) {
+      values.push(courseIds,institutionIds);
+      where.push(`(ccr.course_id = ANY($${values.length-1}::bigint[]) OR ccr.institution_id = ANY($${values.length}::bigint[]))`);
+    } else if (courseIds.length) add('ccr.course_id = ANY(?::bigint[])',courseIds);
+    else add('ccr.institution_id = ANY(?::bigint[])',institutionIds);
+    if (sort === 'relevance') {
+      values.push(normalizedQuery, `${normalizedQuery}%`);
+      relevanceOrder = `CASE WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length - 1} THEN 0 WHEN ${foldedSql('i.name')} LIKE $${values.length - 1} THEN 1 WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length} THEN 2 WHEN ${foldedSql('i.name')} LIKE $${values.length} THEN 3 ELSE 4 END,c.canonical_name,i.name`;
+    }
   }
   const location = parseLocationFilter(city, state);
   if (location.city) add(`${foldedSql('m.name')} LIKE ?`, `%${foldText(location.city)}%`);
@@ -85,6 +116,13 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   if (network) add(`i.education_network = ?`, network);
   if (modality) add(`ccr.modality = ?`, modality);
   if (degree) add(`ccr.degree = ?`, degree);
+  if (organization) add(`i.academic_organization = ?`, institutionOrganizationValues[organization]);
+  if (category) add(`i.administrative_category = ?`, administrativeCategoryValues[category]);
+  if (free) add(`ccr.free_indicator = ?`, free === 'sim');
+  if (shift === 'diurno') where.push('ccr.daytime_seats > 0');
+  if (shift === 'noturno') where.push('ccr.nighttime_seats > 0');
+  if (dimension) add(`ccr.dimension = ?`, dimension);
+  if (minSeats !== undefined) add(`ccr.census_seats >= ?`, minSeats);
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const hasOrigin = Number.isFinite(lat) && Number.isFinite(lng);
   let distanceSql = 'NULL::double precision';
@@ -95,9 +133,10 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   }
   const order = sort === 'distance' && hasOrigin ? 'distance_km NULLS LAST,c.canonical_name,i.name' : sort === 'name' ? 'c.canonical_name,i.name' : sort === 'seats' ? 'ccr.census_seats DESC NULLS LAST,c.canonical_name' : relevanceOrder;
   values.push(limit, (page - 1) * limit);
-  return (await pool.query(`SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.free_indicator, ccr.census_year,
+  return (await pool.query(`SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.dimension, ccr.free_indicator, ccr.census_year,
+    ccr.daytime_seats,ccr.nighttime_seats,
     c.id course_id,c.slug course_slug,c.cine_code,c.canonical_name,i.id institution_id,i.name institution_name,i.acronym,i.slug institution_slug,
-    i.education_network,i.administrative_category,m.name municipality_name,m.slug municipality_slug,s.abbreviation state_abbreviation,
+    i.education_network,i.administrative_category,i.academic_organization,m.name municipality_name,m.slug municipality_slug,s.abbreviation state_abbreviation,
     m.reference_longitude lng,m.reference_latitude lat,m.location_note,${distanceSql} distance_km,
     src.name source_name,src.canonical_url source_url,ss.imported_at,
     ccr.census_seats,ccr.enrolled,count(*) OVER() total
