@@ -1,14 +1,16 @@
 services:
   - type: web
     name: faculdade-perto
-    runtime: docker
+    runtime: node
     plan: free
     region: virginia
     branch: master
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    startCommand: npm run db:migrate && npm start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "22.22.0"
       - key: NODE_ENV
         value: production
       - key: PORT

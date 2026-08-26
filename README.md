@@ -13,7 +13,7 @@ O serviço gratuito pode levar alguns segundos para despertar no primeiro acesso
 ## O que está implementado
 
 - React em JavaScript, responsivo e acessível;
-- busca por curso, instituição, cidade, UF, rede, modalidade e grau;
+- busca por curso, instituição e cidade, com filtros de UF, rede, categoria administrativa, organização acadêmica, modalidade, grau, turno, gratuidade, dimensão e vagas mínimas;
 - mapa Leaflet/OpenStreetMap em split view, raio de 5–100 km e localização do usuário;
 - referências municipais claramente separadas de campi;
 - páginas de instituição, registro de curso, cidade, FAQ, contato, correção, agradecimento e 404;
@@ -48,9 +48,8 @@ Faculdade Perto/
 │       ├── lib/              Sessão e utilidades locais
 │       └── styles/           Tokens e estilos globais
 ├── docs/                     Auditorias e operação
-├── scripts/                  Banco local e migração de dados
-├── Dockerfile                Build único do site e da API
-└── render.yaml               Publicação no Render
+├── scripts/                  Banco local, auditorias e migração de dados
+└── render.yaml               Publicação Node.js nativa no Render
 ```
 
 | Camada | Tecnologias |
@@ -59,7 +58,7 @@ Faculdade Perto/
 | API | Node.js, Express, Zod e OpenAPI |
 | Banco | PostgreSQL local e CockroachDB Basic em produção |
 | Dados | Microdados oficiais do Censo da Educação Superior 2024 |
-| Produção | Docker e Render |
+| Produção | Node.js nativo no Render |
 
 ## Princípios do produto
 
@@ -86,7 +85,7 @@ Requisitos: Node.js 20+.
 
 ```bash
 npm install
-docker compose up -d postgres
+npm run db:local:start
 npm run db:migrate
 npm run db:seed
 npm run dev
@@ -98,13 +97,15 @@ Abra `http://localhost:5173`. O banco configurado em `.env` deve estar ativo ant
 
 Em produção, o banco prioritário é o **CockroachDB Basic**, compatível com o protocolo PostgreSQL e dimensionado para preservar a carga nacional completa. A aplicação usa TLS, pool limitado e repetição automática de transações serializáveis. Consulte [a operação no CockroachDB](./docs/cockroachdb.md). O [Supabase](./docs/supabase.md) permanece documentado como alternativa gerenciada, mas seu plano gratuito não comporta este catálogo completo.
 
-Com Docker disponível:
+Para iniciar o PostgreSQL local empacotado pelo projeto no Windows:
 
 ```bash
-docker compose up -d postgres
+npm run db:local:start
 npm run db:migrate
 npm run db:seed
 ```
+
+Use `npm run db:local:stop` para encerrá-lo. O projeto não depende de Docker.
 
 Defina `DATA_MODE=database` para exigir o banco. Em produção esse modo já é obrigatório; a aplicação não cai silenciosamente para a amostra.
 
@@ -133,15 +134,16 @@ O pacote verificado durante a construção tinha SHA-256 `e8e11899efe2b348a7e80e
 npm test
 npm run build
 npm run test:smoke -- https://faculdade-perto.onrender.com
+npm run test:production
 ```
 
-Os 40 testes automatizados cobrem média simples/ponderada, aviso de treineiro, modalidades de corte não agregadas, campo sem fonte impedido de virar confirmado, distância geodésica, chave idempotente do importador, interpretação de cidade/UF, autenticação, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit e validações da correção. O smoke test acrescenta 16 verificações integradas de banco, busca, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404.
+Os 51 testes automatizados cobrem média simples/ponderada, aviso de treineiro, modalidades de corte não agregadas, campo sem fonte impedido de virar confirmado, distância geodésica, chave idempotente do importador, todos os filtros de busca, interpretação de cidade/UF, autenticação, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit e validações da correção. O smoke test acrescenta 18 verificações integradas de banco, busca, filtros, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404. A auditoria de produção percorre ainda os 27 estados, combinações de filtros, ordenações, autenticação e gravações com limpeza posterior.
 
 Consulte [a operação do catálogo nacional](./docs/operacao-catalogo-nacional.md). A carga completa foi ensaiada localmente: 2.561 IES, 720.349 registros de curso, 223 campos por registro e zero rejeições. A estratégia evita materializar cerca de 139 milhões de valores `QT_*` como linhas separadas.
 
 ## Produção
 
-Copie `.env.example`, configure `PUBLIC_SITE_URL`, `DATABASE_PROVIDER=cockroach` e a `DATABASE_URL` fornecida pelo CockroachDB. Nunca envie o `.env` ao Git. O arquivo `render.yaml` publica o site e a API no mesmo serviço Docker, executando as migrations antes de iniciar. O `docker-compose.production.yml` permanece disponível para uma instalação PostgreSQL autocontida.
+Copie `.env.example`, configure `PUBLIC_SITE_URL`, `DATABASE_PROVIDER=cockroach` e a `DATABASE_URL` fornecida pelo CockroachDB. Nunca envie o `.env` ao Git. O `render.yaml` compila o React e publica site e API no mesmo serviço Node.js nativo, executando as migrations antes de iniciar. Não há imagem ou dependência de Docker.
 
 Cadastros públicos sempre começam como usuário comum; conceda `reviewer` ou `admin` somente por um procedimento operacional autenticado no banco, depois de verificar a identidade da pessoa.
 
