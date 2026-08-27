@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { administrativeCategoryValues,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
+import { administrativeCategoryValues,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
 
 describe('parseLocationFilter',()=>{
   it('interpreta uma UF digitada no campo de cidade',()=>{
@@ -23,5 +23,12 @@ describe('parseLocationFilter',()=>{
     expect(administrativeCategoryValues).toMatchObject({
       publica_federal:'Pública Federal',publica_estadual:'Pública Estadual',privada_com_fins:'Privada com fins lucrativos'
     });
+  });
+
+  it('gera distância geográfica com tipos compatíveis com o CockroachDB',()=>{
+    const sql=greatCircleDistanceSql('m.latitude','m.longitude','$1','$2');
+    expect(sql).toContain('6371.0::float8');
+    expect(sql).toContain('m.latitude::float8-$1::float8');
+    expect(sql).toContain('m.longitude::float8-$2::float8');
   });
 });

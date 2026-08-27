@@ -34,6 +34,10 @@ export const administrativeCategoryValues = Object.freeze({
   especial: 'Especial'
 });
 
+export function greatCircleDistanceSql(latitudeSql,longitudeSql,latitudeParam,longitudeParam) {
+  return `6371.0::float8 * 2.0::float8 * asin(sqrt(power(sin(radians(${latitudeSql}::float8-${latitudeParam}::float8)/2.0::float8),2.0::float8)+cos(radians(${latitudeParam}::float8))*cos(radians(${latitudeSql}::float8))*power(sin(radians(${longitudeSql}::float8-${longitudeParam}::float8)/2.0::float8),2.0::float8)))`;
+}
+
 export async function listInstitutions({ page, limit, q, state, city, network }) {
   const values = [];
   const where = [];
@@ -129,7 +133,7 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   if (hasOrigin) {
     values.push(lat, lng);
     const latParam = `$${values.length - 1}`; const lngParam = `$${values.length}`;
-    distanceSql = `CASE WHEN m.reference_latitude IS NULL THEN NULL ELSE 6371 * 2 * asin(sqrt(power(sin(radians(m.reference_latitude-${latParam})/2),2)+cos(radians(${latParam}))*cos(radians(m.reference_latitude))*power(sin(radians(m.reference_longitude-${lngParam})/2),2))) END`;
+    distanceSql = `CASE WHEN m.reference_latitude IS NULL THEN NULL ELSE ${greatCircleDistanceSql('m.reference_latitude','m.reference_longitude',latParam,lngParam)} END`;
   }
   const order = sort === 'distance' && hasOrigin ? 'distance_km NULLS LAST,c.canonical_name,i.name' : sort === 'name' ? 'c.canonical_name,i.name' : sort === 'seats' ? 'ccr.census_seats DESC NULLS LAST,c.canonical_name' : relevanceOrder;
   values.push(limit, (page - 1) * limit);
@@ -162,11 +166,12 @@ export async function findCatalogRecord(id) {
 }
 
 export async function nearbyCampuses({ lat, lng, radiusKm, limit }) {
+  const distanceSql=greatCircleDistanceSql('cp.latitude','cp.longitude','$1','$2');
   return (await pool.query(`SELECT cp.id,cp.name,cp.slug,cp.status,cp.location_status,i.name institution_name,i.slug institution_slug,
     m.name municipality_name,s.abbreviation state_abbreviation,cp.longitude lng,cp.latitude lat,
-    6371 * 2 * asin(sqrt(power(sin(radians(cp.latitude-$1)/2),2)+cos(radians($1))*cos(radians(cp.latitude))*power(sin(radians(cp.longitude-$2)/2),2))) distance_km
+    ${distanceSql} distance_km
     FROM campuses cp JOIN institutions i ON i.id=cp.institution_id LEFT JOIN municipalities m ON m.id=cp.municipality_id LEFT JOIN states s ON s.id=m.state_id
-    WHERE cp.latitude IS NOT NULL AND cp.longitude IS NOT NULL AND 6371 * 2 * asin(sqrt(power(sin(radians(cp.latitude-$1)/2),2)+cos(radians($1))*cos(radians(cp.latitude))*power(sin(radians(cp.longitude-$2)/2),2))) <= $3
+    WHERE cp.latitude IS NOT NULL AND cp.longitude IS NOT NULL AND ${distanceSql} <= $3
     ORDER BY distance_km LIMIT $4`, [lat,lng,radiusKm,limit])).rows;
 }
 
