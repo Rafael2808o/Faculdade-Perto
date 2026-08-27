@@ -1,8 +1,8 @@
 :root{
   --paper:#f4f7f9;--paper-raised:#ffffff;--ink:#102a43;--ink-soft:#5d7083;--line:#dce5eb;
-  --primary:#0d6073;--primary-strong:#08495b;--primary-soft:#dff3f4;--primary-on:#ffffff;
+  --primary:#155eef;--primary-strong:#0b3b8f;--primary-soft:#e8f0ff;--primary-on:#ffffff;
   --moss:#39745b;--moss-soft:#e2f3e9;--amber:#b56b12;--amber-soft:#fff0d5;--terracotta:#b34f3c;--terracotta-soft:#fbe7e1;
-  --focus:#15a0b5;--shadow:0 22px 60px rgba(16,42,67,.12);--shadow-sm:0 8px 24px rgba(16,42,67,.08);
+  --focus:#0aa89e;--shadow:0 22px 60px rgba(16,42,67,.12);--shadow-sm:0 8px 24px rgba(16,42,67,.08);
   --radius-sm:.75rem;--radius:1.05rem;--radius-lg:1.6rem;--content:1240px;
   --serif:'Manrope',system-ui,sans-serif;--sans:'Manrope',system-ui,sans-serif;
 }
