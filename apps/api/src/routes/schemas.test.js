@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { searchQuery } from './schemas.js';
+import { numericIdParams,searchQuery } from './schemas.js';
 
 describe('searchQuery',()=>{
   it('aceita uma combinação completa de filtros oficiais',()=>{
@@ -20,5 +20,10 @@ describe('searchQuery',()=>{
   it('exige localização para ordenar por distância',()=>{
     expect(()=>searchQuery.parse({sort:'distance'})).toThrow(/localização/);
     expect(searchQuery.parse({sort:'distance',lat:'-23.55',lng:'-46.63'}).sort).toBe('distance');
+  });
+
+  it('preserva IDs BIGINT do CockroachDB sem perda de precisão',()=>{
+    expect(numericIdParams.parse({id:'1205140709989515265'}).id).toBe('1205140709989515265');
+    expect(()=>numericIdParams.parse({id:'12.5'})).toThrow(/identificador/);
   });
 });

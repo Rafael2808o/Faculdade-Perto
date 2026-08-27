@@ -104,7 +104,7 @@ try{
   const names=alphabetical.data.map((x)=>x.course.name);
   assert(names.every((name,index)=>index===0||names[index-1].localeCompare(name,'pt-BR')<=0),'Ordenação por nome incorreta.');
   await assertSearch('lat=-23.5505&lng=-46.6333&sort=distance',(x)=>Number.isFinite(x.location.distanceKm),'ordenação por distância');
-  await request('/api/v1/search?shift=integral',{expectedStatus:400});
+  await request('/api/v1/search?shift=integral',{expectedStatus:422});
 
   const first=combined.data[0];
   const detail=await request(`/api/v1/catalog-records/${first.id}`);
