@@ -15,6 +15,7 @@ export const openapi = {
   paths:{
     '/search':{get:{tags:['Busca'],summary:'Busca cursos e instituições sem transformar agregados em ofertas',parameters:[['q','string'],['city','string'],['state','string'],['network','string'],['modality','string'],['degree','string'],['organization','string'],['category','string'],['free','string'],['shift','string'],['dimension','string'],['minSeats','integer'],['sort','string'],['page','integer'],['limit','integer']].map(([name,type])=>({name,in:'query',schema:{type}})),responses:{200:{description:'Resultados paginados'}}}},
     '/institutions':{get:{tags:['Instituições'],summary:'Lista instituições',responses:{200:{description:'Instituições paginadas'}}}},
+    '/search/map':{get:{tags:['Busca'],summary:'Resume resultados por município e instituição para o mapa',responses:{200:{description:'Grupos geográficos da busca'}}}},
     '/institutions/{id}':{get:{tags:['Instituições'],summary:'Detalha instituição',parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}],responses:{200:{description:'Instituição e registros de curso'},404:{description:'Não encontrada'}}}},
     '/courses':{get:{tags:['Cursos'],summary:'Lista cursos canônicos CINE',responses:{200:{description:'Cursos'}}}},
     '/campuses':{get:{tags:['Geografia'],summary:'Lista somente campi sustentados por fonte complementar',responses:{200:{description:'Campi ou aviso de indisponibilidade'}}}},

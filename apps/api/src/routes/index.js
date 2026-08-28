@@ -20,6 +20,7 @@ apiRouter.get('/offerings',validate(paginationSchema),catalog.listOfferings);
 apiRouter.get('/offerings/:id',validate(idParams,'params'),catalog.getOffering);
 apiRouter.get('/catalog-records/:id',validate(idParams,'params'),catalog.getRecord);
 apiRouter.get('/search',validate(searchQuery),catalog.search);
+apiRouter.get('/search/map',validate(searchQuery),catalog.searchMap);
 apiRouter.get('/cutoffs',catalog.listCutoffs);
 apiRouter.post('/enem/score',validate(enemBody,'body'),enem.score);
 apiRouter.post('/contact',writeLimiter,validate(contactBody,'body'),write.contact);

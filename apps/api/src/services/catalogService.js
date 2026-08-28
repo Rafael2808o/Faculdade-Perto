@@ -73,6 +73,15 @@ export async function search(filters) {
   return { data: rows.map(searchDto), pagination: pagination(rows,filters.page,filters.limit) };
 }
 
+export async function searchMap(filters) {
+  const result = await call('searchCatalogMap',filters);
+  return {
+    data: result.groups,
+    coverage: { total: result.total, represented: result.represented, truncated: result.truncated },
+    notice: result.truncated ? 'O mapa resume os primeiros 5.000 registros desta busca. Refine por cidade ou estado para representar todos.' : null
+  };
+}
+
 export async function getCatalogRecord(id) {
   const row = await call('findCatalogRecord',id);
   if (!row) throw new AppError('REGISTRO_NAO_ENCONTRADO','Registro de curso não encontrado.',{status:404,hint:'Volte para a busca e escolha outro resultado.'});

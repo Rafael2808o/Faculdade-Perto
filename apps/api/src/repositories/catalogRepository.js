@@ -151,6 +151,33 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
     LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
 }
 
+export async function searchCatalogMap(filters) {
+  const rows = await searchCatalog({ ...filters, page: 1, limit: 5000, sort: 'relevance', lat: undefined, lng: undefined });
+  const total = Number(rows[0]?.total || 0);
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.lat === null || row.lng === null) continue;
+    const key = `${row.municipality_slug}:${row.state_abbreviation}`;
+    if (!groups.has(key)) groups.set(key, {
+      city: row.municipality_name, citySlug: row.municipality_slug, state: row.state_abbreviation,
+      lat: Number(row.lat), lng: Number(row.lng), records: 0, institutions: new Map()
+    });
+    const group = groups.get(key);
+    group.records += 1;
+    if (!group.institutions.has(String(row.institution_id))) group.institutions.set(String(row.institution_id), {
+      id: row.institution_id, name: row.institution_name, acronym: row.acronym, slug: row.institution_slug, records: 0
+    });
+    group.institutions.get(String(row.institution_id)).records += 1;
+  }
+  return {
+    groups: [...groups.values()].map((group) => ({
+      ...group,
+      institutions: [...group.institutions.values()].sort((a,b)=>b.records-a.records||a.name.localeCompare(b.name,'pt-BR'))
+    })),
+    total, represented: rows.length, truncated: total > rows.length
+  };
+}
+
 export async function findCatalogRecord(id) {
   const result = await pool.query(`SELECT ccr.*,c.canonical_name,c.cine_code,c.slug course_slug,c.cine_general_area_name,
     i.name institution_name,i.slug institution_slug,i.acronym,i.education_network,i.administrative_category,
