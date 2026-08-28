@@ -22,6 +22,11 @@ describe('searchQuery',()=>{
     expect(searchQuery.parse({sort:'distance',lat:'-23.55',lng:'-46.63'}).sort).toBe('distance');
   });
 
+  it('aceita raio somente junto da localização',()=>{
+    expect(()=>searchQuery.parse({radiusKm:'25'})).toThrow(/raio exige/);
+    expect(searchQuery.parse({radiusKm:'25',lat:'-20.83',lng:'-51.32'}).radiusKm).toBe(25);
+  });
+
   it('preserva IDs BIGINT do CockroachDB sem perda de precisão',()=>{
     expect(numericIdParams.parse({id:'1205140709989515265'}).id).toBe('1205140709989515265');
     expect(()=>numericIdParams.parse({id:'12.5'})).toThrow(/identificador/);

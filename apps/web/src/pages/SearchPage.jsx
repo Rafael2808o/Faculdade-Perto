@@ -13,9 +13,9 @@ import {calculateCompatibility,readCompassProfile} from '../lib/compass.js';
 
 export function SearchPage(){
   const [params,setParams]=useSearchParams();const [active,setActive]=useState(null);const [radius,setRadius]=useState(25);const [mode,setMode]=useState('list');const [userLocation,setUserLocation]=useState(null);
-  const filters=useMemo(()=>readSearchFilters(params,userLocation),[params,userLocation]);
+  const filters=useMemo(()=>({...readSearchFilters(params,userLocation),...(userLocation?{radiusKm:radius}:{})}),[params,userLocation,radius]);
   const query=useQuery({queryKey:['search',filters],queryFn:()=>api(`/search?${queryString(filters)}`)});
-  const hasMapScope=Boolean(filters.q||filters.city||filters.state);
+  const hasMapScope=Boolean(filters.q||filters.city||filters.state||userLocation);
   const mapQuery=useQuery({queryKey:['search-map',filters],queryFn:()=>api(`/search/map?${queryString(filters)}`),enabled:hasMapScope});
   function change(key,value){const next=new URLSearchParams(params);if(value&&value!=='relevance')next.set(key,value);else next.delete(key);if(key!=='page')next.delete('page');setParams(next)}
   function clearFilters(){const next=new URLSearchParams();if(filters.q)next.set('q',filters.q);setParams(next)}

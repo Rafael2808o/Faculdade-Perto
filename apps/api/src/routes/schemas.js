@@ -12,9 +12,10 @@ export const searchQuery = courseQuery.extend({
   free:z.enum(['sim','nao']).optional(), shift:z.enum(['diurno','noturno']).optional(),
   dimension:z.enum(['municipio','ead_brasil','ead_brasil_agregado','ead_exterior']).optional(),
   minSeats:z.coerce.number().int().min(0).max(100000).optional(),
+  radiusKm:z.coerce.number().refine((value)=>[5,10,25,50,100].includes(value),'Use um raio de 5, 10, 25, 50 ou 100 km.').optional(),
   sort:z.enum(['relevance','name','distance','seats']).default('relevance'),
   lat:z.coerce.number().min(-90).max(90).optional(), lng:z.coerce.number().min(-180).max(180).optional()
-}).refine((value)=>(value.lat===undefined)===(value.lng===undefined),{message:'Envie latitude e longitude juntas.'}).refine((value)=>value.sort!=='distance'||value.lat!==undefined,{message:'A ordenação por distância exige sua localização.'});
+}).refine((value)=>(value.lat===undefined)===(value.lng===undefined),{message:'Envie latitude e longitude juntas.'}).refine((value)=>value.sort!=='distance'||value.lat!==undefined,{message:'A ordenação por distância exige sua localização.'}).refine((value)=>value.radiusKm===undefined||value.lat!==undefined,{message:'O filtro de raio exige sua localização.'});
 export const nearbyQuery = z.object({ lat:z.coerce.number().min(-90).max(90), lng:z.coerce.number().min(-180).max(180), radiusKm:z.coerce.number().refine((v)=>[5,10,25,50,100].includes(v),'Use um raio de 5, 10, 25, 50 ou 100 km.'), limit:z.coerce.number().int().min(1).max(100).default(50) });
 export const idParams = z.object({ id:z.string().trim().min(1).max(180) });
 export const numericIdParams = z.object({ id:z.string().trim().regex(/^[1-9]\d{0,19}$/,'Use um identificador numérico válido.') });

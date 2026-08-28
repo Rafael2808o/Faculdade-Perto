@@ -92,7 +92,7 @@ export async function listCourses({ page, limit, q, degree, modality }) {
     GROUP BY c.id ORDER BY c.canonical_name LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
 }
 
-export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, page, limit, sort, lat, lng }) {
+export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, radiusKm, page, limit, sort, lat, lng }) {
   const values = [];
   const where = [];
   let relevanceOrder = 'c.canonical_name,i.name';
@@ -130,14 +130,18 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   if (shift === 'noturno') where.push('ccr.nighttime_seats > 0');
   if (dimension) add(`ccr.dimension = ?`, dimension);
   if (minSeats !== undefined) add(`ccr.census_seats >= ?`, minSeats);
-  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const hasOrigin = Number.isFinite(lat) && Number.isFinite(lng);
   let distanceSql = 'NULL::double precision';
   if (hasOrigin) {
     values.push(lat, lng);
     const latParam = `$${values.length - 1}`; const lngParam = `$${values.length}`;
     distanceSql = `CASE WHEN m.reference_latitude IS NULL THEN NULL ELSE ${greatCircleDistanceSql('m.reference_latitude','m.reference_longitude',latParam,lngParam)} END`;
+    if (radiusKm !== undefined) {
+      values.push(radiusKm);
+      where.push(`m.reference_latitude IS NOT NULL AND ${greatCircleDistanceSql('m.reference_latitude','m.reference_longitude',latParam,lngParam)} <= $${values.length}`);
+    }
   }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const order = sort === 'distance' && hasOrigin ? 'distance_km NULLS LAST,c.canonical_name,i.name' : sort === 'name' ? 'c.canonical_name,i.name' : sort === 'seats' ? 'ccr.census_seats DESC NULLS LAST,c.canonical_name' : relevanceOrder;
   values.push(limit, (page - 1) * limit);
   return (await pool.query(`SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.dimension, ccr.free_indicator, ccr.census_year,
@@ -155,7 +159,7 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
 }
 
 export async function searchCatalogMap(filters) {
-  const rows = await searchCatalog({ ...filters, page: 1, limit: 5000, sort: 'relevance', lat: undefined, lng: undefined });
+  const rows = await searchCatalog({ ...filters, page: 1, limit: 5000, sort: filters.lat === undefined ? 'relevance' : 'distance' });
   const total = Number(rows[0]?.total || 0);
   const groups = new Map();
   for (const row of rows) {
