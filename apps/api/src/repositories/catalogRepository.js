@@ -34,6 +34,9 @@ export const administrativeCategoryValues = Object.freeze({
   especial: 'Especial'
 });
 
+export const foldedInstitutionSearchSql = () => `SELECT DISTINCT i.id FROM institutions i LEFT JOIN institution_aliases ia ON ia.institution_id=i.id
+  WHERE ${foldedSql('i.name')} LIKE $1 OR ia.normalized_alias LIKE $1`;
+
 export function greatCircleDistanceSql(latitudeSql,longitudeSql,latitudeParam,longitudeParam) {
   return `6371.0::float8 * 2.0::float8 * asin(sqrt(power(sin(radians(${latitudeSql}::float8-${latitudeParam}::float8)/2.0::float8),2.0::float8)+cos(radians(${latitudeParam}::float8))*cos(radians(${latitudeSql}::float8))*power(sin(radians(${longitudeSql}::float8-${longitudeParam}::float8)/2.0::float8),2.0::float8)))`;
 }
@@ -99,7 +102,7 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
     const like=`%${normalizedQuery}%`;
     const [matchedCourses,matchedInstitutions]=await Promise.all([
       pool.query(`SELECT id FROM courses WHERE ${foldedSql('canonical_name')} LIKE $1`,[like]),
-      pool.query(`SELECT id FROM institutions WHERE ${foldedSql('name')} LIKE $1`,[like])
+      pool.query(foldedInstitutionSearchSql(),[like])
     ]);
     const courseIds=matchedCourses.rows.map(({id})=>String(id));
     const institutionIds=matchedInstitutions.rows.map(({id})=>String(id));

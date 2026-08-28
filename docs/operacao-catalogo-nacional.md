@@ -20,6 +20,19 @@ O catálogo educacional é a fotografia oficial do Censo da Educação Superior 
 
 O Censo não fornece campus/polo individual, endereço atual de cada oferta, mensalidade, processo seletivo vigente ou nota de corte. Esses campos continuam `não confirmado` até existir uma fonte pública oficial que permita vinculação segura. O Cadastro e-MEC é a referência regulatória atual, mas sua consulta/exportação deve ser tratada como enriquecimento separado da fotografia censitária.
 
+## Estratégia nacional de atualização contínua
+
+O catálogo não deve depender de uma única fonte. A ordem de confiança é:
+
+1. atos autorizativos, Diário Oficial, INEP, e-MEC e bases governamentais;
+2. páginas e editais publicados no domínio oficial da instituição;
+3. conselhos estaduais, SiSU, Prouni, Fies e portais públicos municipais;
+4. fontes secundárias apenas para descoberta, nunca para confirmar um registro.
+
+Cada informação complementar precisa guardar URL, data de coleta, hash do conteúdo e vínculo com `source_records`. Nomes populares, mantenedoras e marcas entram em `institution_aliases`, permitindo que uma pesquisa como “FEA” encontre FISMA e FCAA sem duplicar instituições. Ofertas recentes ficam separadas da fotografia censitária e nunca são apresentadas como Censo 2024.
+
+Não existe uma publicação pública nacional em tempo real capaz de provar literalmente todas as ofertas ativas. Por isso, a meta operacional é cobertura máxima verificável, atualização incremental e exposição transparente da fonte e da data de cada registro.
+
 ## Reproduzir a carga
 
 1. Rode `npm run db:migrate` com `DATABASE_URL` apontando para PostgreSQL.

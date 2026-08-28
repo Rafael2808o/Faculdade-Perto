@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { administrativeCategoryValues,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
+import { administrativeCategoryValues,foldedInstitutionSearchSql,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
 
 describe('parseLocationFilter',()=>{
   it('interpreta uma UF digitada no campo de cidade',()=>{
@@ -30,5 +30,9 @@ describe('parseLocationFilter',()=>{
     expect(sql).toContain('6371.0::float8');
     expect(sql).toContain('m.latitude::float8-$1::float8');
     expect(sql).toContain('m.longitude::float8-$2::float8');
+  });
+
+  it('mantém aliases institucionais como parte da busca nacional',()=>{
+    expect(foldedInstitutionSearchSql()).toContain('institution_aliases');
   });
 });
