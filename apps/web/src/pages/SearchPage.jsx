@@ -22,12 +22,14 @@ export function SearchPage(){
   function showMode(nextMode){setMode(nextMode);setTimeout(()=>document.querySelector(nextMode==='map'?'.map-panel':'.results-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),0)}
   const items=query.data?.data||[];const pagination=query.data?.pagination;
   const compass=params.get('compass')==='1'?readCompassProfile():null;
+  const isAndradina=(filters.city||'').toLocaleLowerCase('pt-BR').includes('andradina')||(userLocation&&Math.abs(userLocation.lat-(-20.8352))<0.35&&Math.abs(userLocation.lng-(-51.3286))<0.35);
   return <div className="search-page">
     <Seo title={`${filters.q||'Cursos e faculdades'}${filters.city||filters.state?` em ${filters.city||filters.state}`:''} — Faculdade Perto`} description="Resultados educacionais com fonte, data e status de confirmação." path={`/buscar?${params}`}/>
     <div className="search-toolbar"><SearchBar key={`${filters.q}|${filters.city}|${filters.state}`} initialCourse={filters.q} initialCity={filters.city||filters.state}/></div>
     <div className={`search-body ${mode==='map'?'map-mode':''}`}>
       <section className="results-panel" aria-live="polite"><div className="results-meta"><h1>{query.isLoading?'Buscando…':`${pagination?.total||0} registros encontrados`}</h1><small>Censo INEP 2024 · retrato histórico nacional</small></div>
-        <div className="catalog-scope-note"><AlertCircle size={17}/><span><strong>O que está nesta busca:</strong> registros do Censo 2024. Cursos autorizados ou iniciados depois desse período só aparecerão após a atualização pelo Cadastro e-MEC.</span></div>
+        <div className="catalog-scope-note"><AlertCircle size={17}/><span><strong>O que está nesta busca:</strong> registros do Censo 2024.{userLocation?' A lista está ordenada pela distância aproximada entre você e o município informado no Censo.':' Cursos autorizados ou iniciados depois desse período entram por fontes oficiais complementares após verificação.'}</span></div>
+        {isAndradina&&<div className="catalog-scope-note"><AlertCircle size={17}/><span><strong>Atualização verificada de Andradina:</strong> a FIRB/UniAndradina oferece Medicina presencial integral em 2026 na Av. Rodrigues Alves, 756. A FEA reúne FISMA e FCAA e divulga Agronomia, Direito, Educação Física, Enfermagem, Medicina Veterinária e Serviço Social na Rua Amazonas, 751. <a href="https://medicina.firb.br/" target="_blank" rel="noreferrer">Fonte Medicina</a> · <a href="https://www.fea.br/" target="_blank" rel="noreferrer">Fonte FEA</a></span></div>}
         {compass&&<div className="compass-search-note"><Compass size={18}/><div><strong>Bússola ativa</strong><span>A compatibilidade considera somente suas preferências e os dados disponíveis. Não é ranking de qualidade.</span></div></div>}
         <SearchFilters filters={filters} onChange={change} onClear={clearFilters}/>
         {query.isLoading&&<><div className="skeleton"/><div className="skeleton"/></>}
