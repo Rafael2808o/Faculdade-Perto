@@ -6,7 +6,9 @@ services:
     region: virginia
     branch: master
     buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
-    startCommand: npm run db:migrate && npm start
+    # As migrações são executadas de forma controlada antes de uma publicação,
+    # não a cada reinício. Isso evita consumo desnecessário de RUs e falhas de boot.
+    startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION

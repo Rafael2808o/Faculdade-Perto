@@ -2,6 +2,8 @@
 
 O Faculdade Perto é publicado como um único Web Service Node.js. O Express entrega a API e os arquivos estáticos gerados pelo Vite na mesma origem. O projeto não usa Docker.
 
+As migrations não fazem parte do comando normal de inicialização. Execute `npm run db:migrate` de forma controlada antes de publicar uma alteração de esquema e confirme o resultado antes do deploy. Essa separação evita que um reinício consuma RUs desnecessariamente ou deixe o serviço indisponível por uma falha de migration.
+
 ## Configuração
 
 O arquivo `render.yaml` declara:
