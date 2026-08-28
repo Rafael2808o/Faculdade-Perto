@@ -75,7 +75,7 @@ export function createApp() {
       if(filePath.includes(`${join('assets','')}`))res.setHeader('Cache-Control','public, max-age=31536000, immutable');
       else if(filePath.endsWith('index.html'))res.setHeader('Cache-Control','no-cache');
     }}));
-    const publicRoutes=[/^\/$/,/^\/buscar\/?$/, /^\/instituicoes\/[^/]+\/?$/, /^\/ofertas\/[^/]+\/?$/, /^\/br\/[a-z]{2}\/[^/]+\/?$/, /^\/(duvidas|contato|corrigir|enem|entrar|meu-plano|comparar|obrigado|privacidade|termos)\/?$/, /^\/admin\/correcoes\/?$/];
+    const publicRoutes=[/^\/$/,/^\/buscar\/?$/, /^\/instituicoes\/[^/]+\/?$/, /^\/ofertas\/[^/]+\/?$/, /^\/br\/[a-z]{2}\/[^/]+\/?$/, /^\/(bussola|duvidas|contato|corrigir|enem|entrar|meu-plano|comparar|obrigado|privacidade|termos)\/?$/, /^\/admin\/correcoes\/?$/];
     app.get('/{*path}',(req,res,next)=>{if(req.path.startsWith('/api/'))return next();const known=publicRoutes.some((pattern)=>pattern.test(req.path));res.set('Cache-Control','no-cache');return res.status(known?200:404).sendFile(join(webDist,'index.html'))});
   }
   app.use(notFoundHandler);

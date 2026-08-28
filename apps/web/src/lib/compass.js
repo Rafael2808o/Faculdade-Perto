@@ -52,3 +52,12 @@ export function compassSearchParams(profile){
   for(const [key,param] of Object.entries(mapping))if(profile[key])params.set(param,String(profile[key]));
   return params;
 }
+
+export function buildCompassScenarios(profile){
+  const base={...defaultCompassProfile,...profile,weights:{...defaultCompassProfile.weights,...profile.weights}};
+  return [
+    {id:'nearby',title:'Mais perto',description:'Prioriza a localização e limita a busca a 25 km.',profile:{...base,maxDistance:base.maxDistance||'25',weights:{...base.weights,location:5}}},
+    {id:'flexible',title:'Mais flexível',description:'Aceita presencial ou EAD e deixa turno e distância em aberto.',profile:{...base,modality:'',shift:'',maxDistance:'',weights:{...base.weights,modality:1,shift:1}}},
+    {id:'public',title:'Somente pública',description:'Mantém suas preferências e restringe a instituições públicas.',profile:{...base,network:'publica',free:'sim',weights:{...base.weights,network:5,free:5}}}
+  ];
+}
