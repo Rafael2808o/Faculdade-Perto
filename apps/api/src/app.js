@@ -50,7 +50,7 @@ export function createApp() {
     const data=await getSitemapCoreData();
     const now=new Date().toISOString();
     const urls=[
-      ['/',now],['/buscar',now],['/duvidas',now],['/enem',now],['/contato',now],['/privacidade',now],['/termos',now],
+      ['/',now],['/bussola',now],['/buscar',now],['/duvidas',now],['/enem',now],['/contato',now],['/privacidade',now],['/termos',now],
       ...data.institutions.map((item)=>[`/instituicoes/${item.slug}`,item.updated_at||now]),
       ...data.municipalities.map((item)=>[`/br/${item.abbreviation.toLowerCase()}/${item.slug}`,now])
     ];
