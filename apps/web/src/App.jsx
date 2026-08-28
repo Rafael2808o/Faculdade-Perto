@@ -20,9 +20,11 @@ const ComparePage=page(()=>import('./pages/ComparePage.jsx'),'ComparePage');
 const AdminPage=page(()=>import('./pages/AdminPage.jsx'),'AdminPage');
 const PrivacyPage=page(()=>import('./pages/PrivacyPage.jsx'),'PrivacyPage');
 const TermsPage=page(()=>import('./pages/TermsPage.jsx'),'TermsPage');
+const CompassPage=page(()=>import('./pages/CompassPage.jsx'),'CompassPage');
 
 export function App(){return <Suspense fallback={<main className="section compact-section" aria-live="polite"><div className="skeleton"/><span className="sr-only">Carregando página…</span></main>}><Routes><Route element={<SiteLayout/>}>
   <Route index element={<HomePage/>}/><Route path="buscar" element={<SearchPage/>}/>
+  <Route path="bussola" element={<CompassPage/>}/>
   <Route path="instituicoes/:slug" element={<InstitutionPage/>}/><Route path="ofertas/:id" element={<RecordPage/>}/>
   <Route path="br/:uf/:city" element={<CityPage/>}/><Route path="duvidas" element={<FaqPage/>}/>
   <Route path="contato" element={<ContactPage/>}/><Route path="corrigir" element={<CorrectionPage/>}/>
