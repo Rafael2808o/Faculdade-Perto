@@ -41,6 +41,6 @@ export const correctionBody = z.object({
   name:z.string().trim().min(2).max(100).optional().or(z.literal('')), email:z.string().trim().email().max(160).optional().or(z.literal(''))
 });
 const score = z.coerce.number().min(0).max(1000);
-const scores = z.object({ languages:score, humanities:score, naturalSciences:score, mathematics:score, essay:score });
+const scores = z.object({ languages:score, humanities:score, naturalSciences:score, mathematics:score, essay:score.int('A nota de redação deve ser inteira.') });
 const weights = z.object({ languages:z.coerce.number().positive(), humanities:z.coerce.number().positive(), naturalSciences:z.coerce.number().positive(), mathematics:z.coerce.number().positive(), essay:z.coerce.number().positive() });
 export const enemBody = z.object({ scores, weights:weights.optional(), trainee:z.boolean().default(false) });

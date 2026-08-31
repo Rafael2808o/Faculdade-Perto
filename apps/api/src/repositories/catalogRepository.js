@@ -45,18 +45,27 @@ export async function listInstitutions({ page, limit, q, state, city, network })
   const values = [];
   const where = [];
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
-  if (q) add(`${foldedSql('i.name')} LIKE ?`, `%${foldText(q)}%`);
+  if (q) {
+    values.push(`%${foldText(q)}%`);
+    where.push(`(${foldedSql('i.name')} LIKE $1 OR ${foldedSql("COALESCE(i.acronym,'')")} LIKE $1 OR EXISTS (SELECT 1 FROM institution_aliases ia WHERE ia.institution_id=i.id AND ia.normalized_alias LIKE $1))`);
+  }
   const location = parseLocationFilter(city, state);
   if (location.state) add(`s.abbreviation = ?`, location.state);
   if (location.city) add(`${foldedSql('m.name')} LIKE ?`, `%${foldText(location.city)}%`);
   if (network) add(`i.education_network = ?`, network);
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  let ordering = 'i.name, i.id';
+  if (q) {
+    values.push(foldText(q));
+    const exact = `$${values.length}`;
+    ordering = `CASE WHEN ${foldedSql("COALESCE(i.acronym,'')")} = ${exact} OR ${foldedSql('i.name')} = ${exact} THEN 0 ELSE 1 END, i.name, i.id`;
+  }
   values.push(limit, (page - 1) * limit);
   const sql = `SELECT i.*, m.name municipality_name, m.slug municipality_slug, s.name state_name, s.abbreviation state_abbreviation,
     src.name source_name, src.canonical_url source_url, ss.imported_at, count(*) OVER() total
     FROM institutions i JOIN municipalities m ON m.id=i.headquarters_municipality_id JOIN states s ON s.id=m.state_id
     LEFT JOIN source_snapshots ss ON ss.id=i.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
-    ${clause} ORDER BY i.name LIMIT $${values.length - 1} OFFSET $${values.length}`;
+    ${clause} ORDER BY ${ordering} LIMIT $${values.length - 1} OFFSET $${values.length}`;
   return (await pool.query(sql, values)).rows;
 }
 
