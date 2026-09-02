@@ -1,1 +1,1 @@
-export function preserveCompetitionModalities(rows){return rows.map((row)=>({...row,score:Number(row.score)}))}
+export function preserveCompetitionModalities(rows){return rows.map((row)=>({...row,score:Number(row.score),score_difference:row.score_difference===null||row.score_difference===undefined?null:Number(row.score_difference)}))}
