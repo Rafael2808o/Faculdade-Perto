@@ -13,13 +13,13 @@ O serviço gratuito pode levar alguns segundos para despertar no primeiro acesso
 ## O que está implementado
 
 - React em JavaScript, responsivo e acessível;
-- busca por curso, instituição e cidade, com filtros de UF, rede, categoria administrativa, organização acadêmica, modalidade, grau, turno, gratuidade, dimensão e vagas mínimas;
+- busca por curso, instituição e cidade, com autocomplete server-side de instituições, siglas, aliases e cursos, além de filtros de UF, rede, categoria administrativa, organização acadêmica, modalidade, grau, turno, gratuidade, dimensão e vagas mínimas;
 - mapa Leaflet/OpenStreetMap em split view, raio de 5–100 km e localização do usuário;
 - Bússola da Escolha com preferências explicáveis, compatibilidade e cenários alternativos;
-- referências municipais claramente separadas de campi;
+- referências municipais claramente separadas de campi e ofertas atuais verificadas exibidas em um bloco próprio;
 - páginas de instituição, registro de curso, cidade, FAQ, contato, correção, agradecimento e 404;
-- calculadora Enem simples e ponderada, com aviso de treineiro;
-- conta com sessão revogável, Meu Plano persistente, checklist local e comparação de até quatro cursos;
+- calculadora Enem simples e ponderada, com aviso de treineiro e comparação opcional com históricos oficiais já importados;
+- conta com sessão revogável em cookie `HttpOnly`, Meu Plano persistente, checklist local e comparação de até quatro cursos;
 - fila administrativa de correções com perfis, moderação e trilha de auditoria;
 - selos de dado importado/confirmado/não confirmado com fonte e data;
 - API REST `/api/v1` em `routes → controllers → services → repositories → models/persistência`;
@@ -27,7 +27,7 @@ O serviço gratuito pode levar alguns segundos para despertar no primeiro acesso
 - PostgreSQL, migrations, histórico de observações, verificações, mensalidades, ingresso e notas de corte;
 - importador nacional via `COPY`, em lote e idempotente, para os dois CSVs do Censo Superior 2024;
 - sitemap XML dinâmico, robots, metadados únicos, Open Graph e JSON-LD;
-- rate limit e validação campo a campo em contato/correção;
+- rate limit geral de escrita e limite específico de login, além de validação campo a campo;
 - testes das regras críticas.
 
 ## Arquitetura
@@ -138,7 +138,7 @@ npm run test:smoke -- https://faculdade-perto.onrender.com
 npm run test:production
 ```
 
-Os 62 testes automatizados cobrem média simples/ponderada, aviso de treineiro, modalidades de corte não agregadas, campo sem fonte impedido de virar confirmado, distância geodésica compatível com CockroachDB, IDs BIGINT sem perda de precisão, chave idempotente do importador, filtros, Bússola, cenários, checklist de decisão, autenticação, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit e validações da correção. O smoke test acrescenta verificações integradas de banco, busca, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404. A auditoria de produção percorre ainda os 27 estados, combinações de filtros, ordenações, autenticação e gravações com limpeza posterior.
+Os 82 testes automatizados cobrem média simples/ponderada, aviso de treineiro, comparação com cortes, separação de modalidades e chamadas, estados sem histórico, mapa sem sobreposição, controle de raio acessível, autocomplete por teclado, ofertas verificadas, campo sem fonte impedido de virar confirmado, distância geodésica compatível com CockroachDB, IDs BIGINT sem perda de precisão, chave idempotente do importador, filtros, Bússola, cenários, checklist de decisão, autenticação por cookie `HttpOnly`, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit, interpretação segura da query string e validações da correção. O smoke test acrescenta verificações integradas de banco, busca, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404. A auditoria de produção percorre ainda os 27 estados, combinações de filtros, ordenações, autenticação e gravações com limpeza posterior.
 
 Consulte [a operação do catálogo nacional](./docs/operacao-catalogo-nacional.md). A carga completa foi ensaiada localmente: 2.561 IES, 720.349 registros de curso, 223 campos por registro e zero rejeições. A estratégia evita materializar cerca de 139 milhões de valores `QT_*` como linhas separadas.
 
@@ -156,7 +156,8 @@ O servidor Express entrega o frontend compilado, a API, `/robots.txt` e `/sitema
 | --- | --- |
 | Saúde | `GET /api/health` |
 | Busca | `GET /api/v1/search`, `GET /api/v1/institutions`, `GET /api/v1/courses` |
-| Catálogo | `GET /api/v1/catalog-records/:id`, `GET /api/v1/institutions/:id` |
+| Catálogo | `GET /api/v1/catalog-records/:id`, `GET /api/v1/institutions/:id`, `GET /api/v1/offerings`, `GET /api/v1/offerings/:id` |
+| Ingresso | `POST /api/v1/enem/score`, `GET /api/v1/cutoffs` |
 | Autenticação | `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `DELETE /api/v1/auth/session` |
 | Meu Plano | `GET /api/v1/me/plan`, `POST /api/v1/me/plan`, `DELETE /api/v1/me/plan/:id` |
 | Participação | `POST /api/v1/contact`, `POST /api/v1/corrections` |
@@ -171,14 +172,18 @@ A documentação interativa completa fica em `/api/docs`.
 - CORS aceita somente as origens configuradas.
 - Zod valida parâmetros e corpos antes da regra de negócio.
 - Endpoints de escrita têm limite de requisições.
+- Login tem limite próprio contra tentativas repetidas.
 - Senhas usam hash `scrypt`; somente o hash do token de sessão é persistido.
+- O site recebe a sessão em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; o segredo não fica no `localStorage`.
 - Papéis `reviewer` e `admin` são verificados na API, não apenas na interface.
 - URLs de evidência rejeitam esquemas executáveis.
 - `.env`, ferramentas locais, dados brutos e builds não são versionados.
 
+Consulte a [auditoria defensiva de 1º de setembro de 2026](./docs/auditoria-seguranca-2026-09-01.md) para achados, correções e riscos residuais.
+
 ## Estado do projeto
 
-A branch `master` é a fonte de publicação. A carga de referência contém 2.561 instituições, 353 cursos canônicos, 3.551 municípios e 720.349 registros censitários, com os 223 campos oficiais preservados por registro. Mensalidade, campus, endereço de oferta e nota de corte permanecem não confirmados até a inclusão de uma fonte complementar confiável.
+A branch `master` é a fonte de publicação. A carga de referência contém 2.561 instituições, 353 cursos canônicos, 3.551 municípios e 720.349 registros censitários, com os 223 campos oficiais preservados por registro. A primeira oferta complementar confirmada é Medicina presencial integral da FIRB/UNIANDRADINA em Andradina, vinculada ao portal institucional e exibida separadamente do Censo. Os demais campi, endereços e ofertas continuam não confirmados até receberem uma fonte complementar confiável. A estrutura de notas de corte está pronta, mas a base de produção ainda não contém um histórico oficial importado; nessa situação a interface informa a ausência em vez de estimar ou inventar chamadas. Veja [a metodologia de possibilidades pelo Enem](./docs/possibilidades-enem.md) e [a política de fontes complementares](./docs/fontes-complementares.md).
 
 ## Contribuição
 
@@ -193,3 +198,5 @@ A branch `master` é a fonte de publicação. A carga de referência contém 2.5
 - https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-da-educacao-superior
 - https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2024.zip
 - https://www.gov.br/mec/pt-br/politica-regulacao-supervisao-educacao-superior/cadastro-nacional-de-cursos-e-ies
+- https://medicina.firb.br/
+- https://www.fea.br/

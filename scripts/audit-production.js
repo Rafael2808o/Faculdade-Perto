@@ -8,16 +8,22 @@ const checks=[];
 const marker=`qa-${Date.now()}`;
 const email=`${marker}@example.com`;
 const password='TesteSeguro#2026';
+let sessionCookie='';
 
 function assert(condition,message){if(!condition)throw new Error(message)}
 
-async function request(path,{method='GET',body,token,expectedStatus=200}={}){
+async function request(path,{method='GET',body,cookie=sessionCookie,updateSession=true,expectedStatus=200}={}){
   const startedAt=performance.now();
   const response=await fetch(`${baseUrl}${path}`,{
     method,signal:AbortSignal.timeout(120000),
-    headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},
+    headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},
     ...(body?{body:JSON.stringify(body)}:{})
   });
+  const setCookie=response.headers.get('set-cookie');
+  if(updateSession&&setCookie){
+    const value=setCookie.split(';',1)[0];
+    sessionCookie=value.endsWith('=')?'':value;
+  }
   const durationMs=Math.round(performance.now()-startedAt);
   if(response.status!==expectedStatus){
     const payload=await response.text();
@@ -112,7 +118,15 @@ try{
   await request(`/api/v1/institutions/${first.institution.id}?limit=5`);
   await request('/api/v1/campuses');
   await request('/api/v1/campuses/nearby?lat=-23.5505&lng=-46.6333&radiusKm=25');
-  await request('/api/v1/offerings?limit=5');
+  const verifiedAndradina=await request('/api/v1/offerings?q=Medicina&city=Andradina&limit=20');
+  assert(verifiedAndradina.pagination.total>=1,'Medicina verificada em Andradina não apareceu.');
+  assert(verifiedAndradina.data.every((item)=>item.location.city==='Andradina'),'A oferta verificada misturou outra cidade com Andradina.');
+  const verifiedMedicine=verifiedAndradina.data.find((item)=>item.course.name==='Medicina'&&item.institution.acronym==='FIRB');
+  assert(verifiedMedicine?.source.url==='https://medicina.firb.br/','A oferta da FIRB perdeu a fonte oficial.');
+  const verifiedDetail=await request(`/api/v1/offerings/${verifiedMedicine.id}`);
+  assert(verifiedDetail.data.campus.address?.number==='756','O detalhe verificado perdeu o endereço oficial.');
+  const historicalAndradina=await request('/api/v1/search?q=Medicina&city=Andradina&limit=100');
+  assert(historicalAndradina.data.every((item)=>item.location.city==='Andradina'),'O filtro exato voltou a misturar Andradina e Nova Andradina.');
   await request('/api/v1/cutoffs');
 
   const score=await request('/api/v1/enem/score',{method:'POST',body:{scores:{languages:650,humanities:700,naturalSciences:680,mathematics:750,essay:800}}});
@@ -124,21 +138,23 @@ try{
   assert(correction.data.status==='pendente','Correção não entrou como pendente.');
 
   const registration=await request('/api/v1/auth/register',{method:'POST',expectedStatus:201,body:{name:'Teste de qualidade',email,password}});
-  let token=registration.data.token;
-  const me=await request('/api/v1/me',{token});
+  assert(registration.data.token===undefined,'O token de sessão foi exposto no JSON.');
+  assert(sessionCookie.startsWith('faculdade_perto_session='),'O cadastro não definiu o cookie de sessão.');
+  const me=await request('/api/v1/me');
   assert(me.data.email===email,'Sessão autenticada divergente.');
-  const plan=await request('/api/v1/me/plan',{method:'POST',expectedStatus:201,token,body:{recordId:first.id,notes:`Plano temporário ${marker}`}});
-  const planItems=await request('/api/v1/me/plan',{token});
+  const plan=await request('/api/v1/me/plan',{method:'POST',expectedStatus:201,body:{recordId:first.id,notes:`Plano temporário ${marker}`}});
+  const planItems=await request('/api/v1/me/plan');
   assert(planItems.data.some((item)=>item.plan_item_id===plan.data.id),'Item não apareceu no Meu Plano.');
-  await request(`/api/v1/me/plan/${plan.data.id}`,{method:'DELETE',expectedStatus:204,token});
-  await request('/api/v1/admin/corrections',{token,expectedStatus:403});
-  await request('/api/v1/auth/session',{method:'DELETE',expectedStatus:204,token});
-  await request('/api/v1/me',{token,expectedStatus:401});
+  await request(`/api/v1/me/plan/${plan.data.id}`,{method:'DELETE',expectedStatus:204});
+  await request('/api/v1/admin/corrections',{expectedStatus:403});
+  const revokedCookie=sessionCookie;
+  await request('/api/v1/auth/session',{method:'DELETE',expectedStatus:204});
+  await request('/api/v1/me',{cookie:revokedCookie,updateSession:false,expectedStatus:401});
   const login=await request('/api/v1/auth/login',{method:'POST',body:{email,password}});
-  token=login.data.token;
-  await request('/api/v1/auth/session',{method:'DELETE',expectedStatus:204,token});
+  assert(login.data.token===undefined,'O login expôs o token de sessão no JSON.');
+  await request('/api/v1/auth/session',{method:'DELETE',expectedStatus:204});
 
-  for(const path of ['/','/buscar','/enem','/comparar','/entrar','/meu-plano','/contato','/corrigir','/privacidade','/termos',`/ofertas/${first.id}`]){
+  for(const path of ['/','/buscar','/enem','/comparar','/entrar','/meu-plano','/contato','/corrigir','/privacidade','/termos',`/ofertas/${first.id}`,`/ofertas-verificadas/${verifiedMedicine.id}`]){
     const html=await request(path);
     assert(html.includes('<div id="root">'),`${path}: React não foi entregue.`);
   }
