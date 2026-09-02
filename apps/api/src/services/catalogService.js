@@ -93,18 +93,43 @@ export async function getNearby(filters) {
   return { data: rows.map((row) => ({...row,distance_km:Number(row.distance_km)})), radiusKm: filters.radiusKm, notice: rows.length ? null : 'Não há campi com coordenadas verificadas neste raio. Referências aproximadas de município não entram neste cálculo.' };
 }
 
+function offeringDto(row){
+  return {
+    resultType:'verified_course_offering',id:row.id,externalCode:row.external_code,
+    course:{name:row.canonical_name,slug:row.course_slug,degree:row.degree,modality:row.modality,shift:row.shift},
+    institution:{name:row.institution_name,acronym:row.acronym,slug:row.institution_slug},
+    campus:{name:row.campus_name,address:row.campus_address,locationStatus:row.location_status,latitude:row.latitude===null?null:Number(row.latitude),longitude:row.longitude===null?null:Number(row.longitude)},
+    location:{city:row.municipality_name,state:row.state_abbreviation},
+    status:{regulatory:row.regulatory_status,data:row.data_status},
+    source:{name:row.source_name,url:row.source_url,referencePeriod:row.reference_period,importedAt:row.imported_at},
+    updatedAt:row.updated_at
+  };
+}
+
 export async function getOfferings(filters) {
   const rows = await call('listOfferings',filters);
-  return { data: rows.map(({total,...row})=>row), pagination:pagination(rows,filters.page,filters.limit), notice: rows.length ? null : 'Nenhuma oferta individual foi confirmada por uma fonte complementar.' };
+  return { data: rows.map(offeringDto), pagination:pagination(rows,filters.page,filters.limit), notice: rows.length ? null : 'Nenhuma oferta individual foi confirmada por uma fonte complementar.' };
 }
 
 export async function getOffering(id) {
   const row=await call('findOffering',id);
   if(!row)throw new AppError('OFERTA_NAO_ENCONTRADA','Oferta individual não encontrada.',{status:404,hint:'Consulte /catalog-records para registros agregados do Censo.'});
-  return row;
+  return offeringDto(row);
 }
 
-export const getCutoffs = async () => preserveCompetitionModalities(await call('listCutoffs'));
+export async function getCutoffs(filters) {
+  const rows=preserveCompetitionModalities(await call('listCutoffs',filters));
+  return {
+    data:rows.map(({total,...row})=>row),
+    pagination:pagination(rows,filters.page,filters.limit),
+    methodology:{
+      guarantee:false,
+      message:'Comparação histórica informativa. Nota de corte, pesos, vagas e modalidades mudam em cada edição.',
+      rounds:'A chamada regular é separada da lista de espera; chamadas posteriores só aparecem quando a fonte oficial informa a rodada.'
+    },
+    empty:rows.length?null:{message:'Ainda não há histórico oficial importado para este cenário.',hint:'Não calculamos probabilidade nem inventamos chamadas sem uma fonte verificável.'}
+  };
+}
 export const getSitemapData = () => call('sitemapData');
 export const getSitemapCoreData = () => call('sitemapCoreData');
 export const getSitemapRecordCount = () => call('sitemapRecordCount');

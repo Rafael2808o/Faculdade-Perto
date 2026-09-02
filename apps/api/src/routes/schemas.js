@@ -17,6 +17,20 @@ export const searchQuery = courseQuery.extend({
   lat:z.coerce.number().min(-90).max(90).optional(), lng:z.coerce.number().min(-180).max(180).optional()
 }).refine((value)=>(value.lat===undefined)===(value.lng===undefined),{message:'Envie latitude e longitude juntas.'}).refine((value)=>value.sort!=='distance'||value.lat!==undefined,{message:'A ordenação por distância exige sua localização.'}).refine((value)=>value.radiusKm===undefined||value.lat!==undefined,{message:'O filtro de raio exige sua localização.'});
 export const nearbyQuery = z.object({ lat:z.coerce.number().min(-90).max(90), lng:z.coerce.number().min(-180).max(180), radiusKm:z.coerce.number().refine((v)=>[5,10,25,50,100].includes(v),'Use um raio de 5, 10, 25, 50 ou 100 km.'), limit:z.coerce.number().int().min(1).max(100).default(50) });
+export const cutoffQuery = paginationSchema.extend({
+  q:text,
+  city:text,
+  state:z.string().trim().length(2).transform((value)=>value.toUpperCase()).optional(),
+  competitionModality:z.string().trim().min(1).max(160).optional(),
+  score:z.coerce.number().min(0).max(1000).optional()
+});
+export const offeringQuery = paginationSchema.extend({
+  q:text,
+  city:text,
+  state:z.string().trim().length(2).transform((value)=>value.toUpperCase()).optional(),
+  modality:z.enum(['presencial','ead']).optional(),
+  degree:z.enum(['bacharelado','licenciatura','tecnologo','abi','nao_confirmado']).optional()
+});
 export const idParams = z.object({ id:z.string().trim().min(1).max(180) });
 export const numericIdParams = z.object({ id:z.string().trim().regex(/^[1-9]\d{0,19}$/,'Use um identificador numérico válido.') });
 

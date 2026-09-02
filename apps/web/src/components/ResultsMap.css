@@ -1,0 +1,16 @@
+.map-panel.map-workspace{display:flex;flex-direction:column;min-width:0;min-height:0;overflow-y:auto;isolation:isolate}
+.map-workspace .radius-control,.map-workspace .map-notice,.map-workspace .map-result-strip{position:static;width:auto;max-width:none;margin:0;border-radius:0;box-shadow:none;backdrop-filter:none;z-index:auto;flex:none}
+.map-workspace .radius-control{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:.3rem 1rem;border-bottom:1px solid var(--line)}
+.map-workspace .radius-control label,.map-workspace .radius-control input{grid-column:1}
+.map-workspace .radius-control input{height:28px;cursor:ew-resize}
+.map-workspace .radius-control button{grid-column:2;grid-row:1/3;align-self:center}
+.map-workspace .radius-control small{grid-column:1/-1;font-size:.75rem}
+.map-workspace .map-viewport{position:relative;min-height:300px;flex:1 0 300px;isolation:isolate}
+.map-workspace .map-viewport .leaflet-container{position:absolute;inset:0;height:100%;width:100%}
+.map-workspace .map-result-strip{padding:.6rem .85rem;border-width:1px 0 0}
+.map-workspace .map-notice{border-width:1px 0 0;font-size:.72rem;padding:.5rem .85rem}
+.map-workspace .leaflet-popup-content{overflow-wrap:anywhere}
+.map-workspace .leaflet-popup-content .map-popup-item{display:block}
+.map-workspace .leaflet-popup-scrolled{overscroll-behavior:contain}
+@media(max-width:800px){.search-body.map-mode .map-panel.map-workspace{height:auto;min-height:75dvh;padding-bottom:70px}.map-workspace .map-viewport{min-height:340px}.search-body.map-mode .map-workspace .radius-control{width:auto}}
+@media(max-width:520px){.map-workspace .radius-control{grid-template-columns:1fr;gap:.35rem;padding:.75rem 1rem}.map-workspace .radius-control label,.map-workspace .radius-control input,.map-workspace .radius-control button,.map-workspace .radius-control small{grid-column:1;grid-row:auto}.map-workspace .radius-control button{width:100%;margin-top:.2rem}.map-workspace .radius-control input{width:100%}}

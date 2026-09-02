@@ -9,5 +9,5 @@ export const getRecord = async (req,res,next) => { try { res.json({data:await se
 export const nearby = async (req,res,next) => { try { res.json(await service.getNearby(req.validated.query)); } catch (e) { next(e); } };
 export const listOfferings = async (req,res,next) => { try { res.json(await service.getOfferings(req.validated.query)); } catch (e) { next(e); } };
 export const getOffering = async (req,res,next) => { try { res.json({data:await service.getOffering(req.validated.params.id)}); } catch (e) { next(e); } };
-export const listCutoffs = async (_req,res,next) => { try { res.json({data:await service.getCutoffs()}); } catch (e) { next(e); } };
+export const listCutoffs = async (req,res,next) => { try { res.json(await service.getCutoffs(req.validated.query)); } catch (e) { next(e); } };
 export const sitemapData = async (_req,res,next) => { try { res.json({data:await service.getSitemapData()}); } catch (e) { next(e); } };

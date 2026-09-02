@@ -13,14 +13,20 @@ export function SearchBar({initialCourse='',initialCity='',large=false}){
     if(!open||course.trim().length<2){setLoading(false);return ()=>controller.abort();}
     setLoading(true);
     const timer=setTimeout(async()=>{
-      try{const result=await api('/institutions?limit=8&q='+encodeURIComponent(course.trim()),{signal:controller.signal});
-        if(!controller.signal.aborted)setSuggestions(result.data||[]);
+      try{const query=encodeURIComponent(course.trim());const [institutionResult,courseResult]=await Promise.all([
+        api('/institutions?limit=5&q='+query,{signal:controller.signal}),
+        api('/courses?limit=5&q='+query,{signal:controller.signal})
+      ]);
+        if(!controller.signal.aborted)setSuggestions([
+          ...(institutionResult.data||[]).map(item=>({key:`institution-${item.id}`,type:'institution',label:item.name.value,meta:[item.acronym?.value,item.headquarters?.value?.city,item.headquarters?.value?.state,item.academicOrganization?.value].filter(Boolean).join(' · ')})),
+          ...(courseResult.data||[]).map(item=>({key:`course-${item.id}`,type:'course',label:item.canonical_name,meta:`Curso · ${item.record_count.toLocaleString('pt-BR')} registros em ${item.institution_count.toLocaleString('pt-BR')} instituições`}))
+        ]);
       }catch{if(!controller.signal.aborted)setSuggestions([]);}
       finally{if(!controller.signal.aborted)setLoading(false);}
     },300);
     return ()=>{clearTimeout(timer);controller.abort();};
   },[course,open]);
-  function select(item){setCourse(item.name.value);setOpen(false);setHighlight(-1);}
+  function select(item){setCourse(item.label);setOpen(false);setHighlight(-1);}
   function submit(e){e.preventDefault();setOpen(false);navigate('/buscar?'+buildSearchParams(course,city));}
   function keys(e){
     if(e.key==='Escape'){setOpen(false);return;}
@@ -32,9 +38,9 @@ export function SearchBar({initialCourse='',initialCity='',large=false}){
       <label htmlFor={listId+'-input'}>Curso ou faculdade</label>
       <div className="autocomplete-input"><Search/><input id={listId+'-input'} role="combobox" aria-autocomplete="list" aria-expanded={open&&course.trim().length>=2} aria-controls={listId} aria-activedescendant={open&&highlight>=0?listId+'-'+highlight:undefined} autoComplete="off" value={course} onFocus={()=>setOpen(true)} onKeyDown={keys} onChange={e=>{setCourse(e.target.value);setOpen(true);}} placeholder="Ex.: Medicina, USP, FEA"/></div>
       {open&&course.trim().length>=2&&<div className="institution-suggestions">
-        <small role="status">{loading?'Buscando instituições…':suggestions.length?'Instituições da base nacional':'Nenhuma sugestão. Você pode buscar o texto digitado.'}</small>
-        <ul role="listbox" id={listId} aria-label="Sugestões de faculdades">
-          {suggestions.map((item,index)=><li role="option" aria-selected={highlight===index} id={listId+'-'+index} key={item.id} onMouseDown={e=>e.preventDefault()} onClick={()=>select(item)}><strong>{item.name.value}</strong><span>{item.acronym?.value} · {item.headquarters?.value?.city}, {item.headquarters?.value?.state}</span></li>)}
+        <small role="status">{loading?'Buscando faculdades e cursos…':suggestions.length?'Sugestões da base nacional':'Nenhuma sugestão. Você pode buscar o texto digitado.'}</small>
+        <ul role="listbox" id={listId} aria-label="Sugestões de faculdades e cursos">
+          {suggestions.map((item,index)=><li role="option" aria-selected={highlight===index} id={listId+'-'+index} key={item.key} onMouseDown={e=>e.preventDefault()} onClick={()=>select(item)}><small>{item.type==='institution'?'Instituição':'Curso'}</small><strong>{item.label}</strong><span>{item.meta}</span></li>)}
         </ul>
       </div>}
     </div>

@@ -37,6 +37,9 @@ export const administrativeCategoryValues = Object.freeze({
 export const foldedInstitutionSearchSql = () => `SELECT DISTINCT i.id FROM institutions i LEFT JOIN institution_aliases ia ON ia.institution_id=i.id
   WHERE ${foldedSql('i.name')} LIKE $1 OR ia.normalized_alias LIKE $1`;
 
+export const courseRelevanceOrderSql = (exactParam,prefixParam) => `CASE WHEN ${foldedSql('c.canonical_name')} = ${exactParam} THEN 0 WHEN ${foldedSql('c.canonical_name')} LIKE ${prefixParam} THEN 1 ELSE 2 END, c.canonical_name`;
+export const exactCityMatchSql = (column='m.name') => `${foldedSql(column)} = ?`;
+
 export function greatCircleDistanceSql(latitudeSql,longitudeSql,latitudeParam,longitudeParam) {
   return `6371.0::float8 * 2.0::float8 * asin(sqrt(power(sin(radians(${latitudeSql}::float8-${latitudeParam}::float8)/2.0::float8),2.0::float8)+cos(radians(${latitudeParam}::float8))*cos(radians(${latitudeSql}::float8))*power(sin(radians(${longitudeSql}::float8-${longitudeParam}::float8)/2.0::float8),2.0::float8)))`;
 }
@@ -51,7 +54,7 @@ export async function listInstitutions({ page, limit, q, state, city, network })
   }
   const location = parseLocationFilter(city, state);
   if (location.state) add(`s.abbreviation = ?`, location.state);
-  if (location.city) add(`${foldedSql('m.name')} LIKE ?`, `%${foldText(location.city)}%`);
+  if (location.city) add(exactCityMatchSql(), foldText(location.city));
   if (network) add(`i.education_network = ?`, network);
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   let ordering = 'i.name, i.id';
@@ -89,8 +92,14 @@ export async function listInstitutionCourses(institutionId,{page=1,limit=30}={})
 export async function listCourses({ page, limit, q, degree, modality }) {
   const values = [];
   const where = [];
+  let ordering = 'c.canonical_name';
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
-  if (q) add(`${foldedSql('c.canonical_name')} LIKE ?`, `%${foldText(q)}%`);
+  if (q) {
+    const normalizedQuery=foldText(q);
+    add(`${foldedSql('c.canonical_name')} LIKE ?`, `%${normalizedQuery}%`);
+    values.push(normalizedQuery,`${normalizedQuery}%`);
+    ordering=courseRelevanceOrderSql(`$${values.length-1}`,`$${values.length}`);
+  }
   if (degree) add(`ccr.degree = ?`, degree);
   if (modality) add(`ccr.modality = ?`, modality);
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -98,7 +107,7 @@ export async function listCourses({ page, limit, q, degree, modality }) {
   return (await pool.query(`SELECT c.id,c.cine_code,c.canonical_name,c.slug,c.cine_general_area_name,
     count(DISTINCT ccr.id)::int record_count, count(DISTINCT ccr.institution_id)::int institution_count, count(*) OVER() total
     FROM courses c JOIN course_catalog_records ccr ON ccr.course_id=c.id ${clause}
-    GROUP BY c.id ORDER BY c.canonical_name LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
+    GROUP BY c.id ORDER BY ${ordering} LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
 }
 
 export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, radiusKm, page, limit, sort, lat, lng }) {
@@ -127,7 +136,7 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
     }
   }
   const location = parseLocationFilter(city, state);
-  if (location.city) add(`${foldedSql('m.name')} LIKE ?`, `%${foldText(location.city)}%`);
+  if (location.city) add(exactCityMatchSql(), foldText(location.city));
   if (location.state) add(`s.abbreviation = ?`, location.state);
   if (network) add(`i.education_network = ?`, network);
   if (modality) add(`ccr.modality = ?`, modality);
@@ -218,28 +227,59 @@ export async function nearbyCampuses({ lat, lng, radiusKm, limit }) {
     ORDER BY distance_km LIMIT $4`, [lat,lng,radiusKm,limit])).rows;
 }
 
-export async function listOfferings({ page, limit }) {
-  return (await pool.query(`SELECT o.*,c.canonical_name,c.slug course_slug,i.name institution_name,i.slug institution_slug,
-    cp.name campus_name,m.name municipality_name,s.abbreviation state_abbreviation,count(*) OVER() total
+export async function listOfferings({ page, limit, q, city, state, modality, degree }) {
+  const values=[];const where=[`o.data_status IN ('confirmado','importado')`];
+  const add=(sql,value)=>{values.push(value);where.push(sql.replace('?',`$${values.length}`));};
+  if(q){values.push(`%${foldText(q)}%`);const queryParam=`$${values.length}`;where.push(`(${foldedSql('c.canonical_name')} LIKE ${queryParam} OR ${foldedSql('i.name')} LIKE ${queryParam} OR ${foldedSql("COALESCE(i.acronym,'')")} LIKE ${queryParam} OR ${foldedSql("COALESCE(cp.name,p.name,'')")} LIKE ${queryParam} OR EXISTS (SELECT 1 FROM institution_aliases ia WHERE ia.institution_id=i.id AND ia.normalized_alias LIKE ${queryParam}))`)}
+  if(city)add(exactCityMatchSql(),foldText(city));
+  if(state)add('s.abbreviation = ?',state);
+  if(modality)add('o.modality = ?',modality);
+  if(degree)add('o.degree = ?',degree);
+  values.push(limit,(page-1)*limit);
+  return (await pool.query(`SELECT o.*,c.canonical_name,c.slug course_slug,i.name institution_name,i.slug institution_slug,i.acronym,
+    COALESCE(cp.name,p.name) campus_name,COALESCE(cp.address,p.address) campus_address,COALESCE(cp.latitude,p.latitude) latitude,COALESCE(cp.longitude,p.longitude) longitude,
+    CASE WHEN cp.id IS NOT NULL THEN cp.location_status ELSE p.status END location_status,m.name municipality_name,s.abbreviation state_abbreviation,
+    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at,count(*) OVER() total
     FROM course_offerings o JOIN courses c ON c.id=o.course_id JOIN institutions i ON i.id=o.institution_id
-    LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN municipalities m ON m.id=cp.municipality_id LEFT JOIN states s ON s.id=m.state_id
-    ORDER BY c.canonical_name LIMIT $1 OFFSET $2`, [limit,(page-1)*limit])).rows;
+    LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN poles p ON p.id=o.pole_id
+    LEFT JOIN municipalities m ON m.id=COALESCE(cp.municipality_id,p.municipality_id) LEFT JOIN states s ON s.id=m.state_id
+    LEFT JOIN source_records sr ON sr.id=o.source_record_id LEFT JOIN source_snapshots ss ON ss.id=sr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
+    WHERE ${where.join(' AND ')} ORDER BY c.canonical_name,i.name LIMIT $${values.length-1} OFFSET $${values.length}`,values)).rows;
 }
 
 export async function findOffering(id) {
   return (await pool.query(`SELECT o.*,c.canonical_name,c.slug course_slug,i.name institution_name,i.slug institution_slug,
-    cp.name campus_name,p.name pole_name,m.name municipality_name,s.abbreviation state_abbreviation
+    i.acronym,COALESCE(cp.name,p.name) campus_name,COALESCE(cp.address,p.address) campus_address,COALESCE(cp.latitude,p.latitude) latitude,COALESCE(cp.longitude,p.longitude) longitude,
+    CASE WHEN cp.id IS NOT NULL THEN cp.location_status ELSE p.status END location_status,m.name municipality_name,s.abbreviation state_abbreviation,
+    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at
     FROM course_offerings o JOIN courses c ON c.id=o.course_id JOIN institutions i ON i.id=o.institution_id
     LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN poles p ON p.id=o.pole_id
     LEFT JOIN municipalities m ON m.id=COALESCE(cp.municipality_id,p.municipality_id) LEFT JOIN states s ON s.id=m.state_id
+    LEFT JOIN source_records sr ON sr.id=o.source_record_id LEFT JOIN source_snapshots ss ON ss.id=sr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
     WHERE o.id=$1 LIMIT 1`,[id])).rows[0]||null;
 }
 
-export async function listCutoffs() {
-  return (await pool.query(`SELECT cs.id,cs.score,cs.competition_modality,cs.round,cs.updated_at,ao.program,ao.edition,ao.year,
-    c.canonical_name,i.name institution_name FROM cutoff_scores cs JOIN admission_offers ao ON ao.id=cs.admission_offer_id
+export async function listCutoffs({page,limit,q,city,state,competitionModality,score}) {
+  const values=[];const where=[];
+  const add=(sql,value)=>{values.push(value);where.push(sql.replace('?',`$${values.length}`));};
+  if(q)add(`(${foldedSql('c.canonical_name')} LIKE ? OR ${foldedSql('i.name')} LIKE $${values.length+1})`,`%${foldText(q)}%`);
+  if(city)add(exactCityMatchSql(),foldText(city));
+  if(state)add('s.abbreviation = ?',state);
+  if(competitionModality)add(`${foldedSql('cs.competition_modality')} LIKE ?`,`%${foldText(competitionModality)}%`);
+  const clause=where.length?`WHERE ${where.join(' AND ')}`:'';
+  values.push(limit,(page-1)*limit);
+  const limitParam=`$${values.length-1}`,offsetParam=`$${values.length}`;
+  const difference=score===undefined?'NULL::numeric':'$'+(values.push(score));
+  return (await pool.query(`SELECT cs.id,cs.score,cs.competition_modality,cs.round,cs.updated_at,ao.program,ao.edition,ao.year,ao.seats,
+    c.canonical_name,i.name institution_name,i.acronym,cp.name campus_name,m.name municipality_name,s.abbreviation state_abbreviation,
+    src.name source_name,src.canonical_url source_url,ss.reference_period,(${difference}::numeric-cs.score)::numeric score_difference,count(*) OVER() total
+    FROM cutoff_scores cs JOIN admission_offers ao ON ao.id=cs.admission_offer_id
     JOIN course_offerings o ON o.id=ao.offering_id JOIN courses c ON c.id=o.course_id JOIN institutions i ON i.id=o.institution_id
-    ORDER BY ao.year DESC,c.canonical_name,cs.competition_modality`)).rows;
+    LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN poles p ON p.id=o.pole_id
+    LEFT JOIN municipalities m ON m.id=COALESCE(cp.municipality_id,p.municipality_id) LEFT JOIN states s ON s.id=m.state_id
+    LEFT JOIN source_records sr ON sr.id=cs.source_record_id LEFT JOIN source_snapshots ss ON ss.id=sr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
+    ${clause} ORDER BY ao.year DESC,abs(COALESCE(${difference}::numeric-cs.score,0)),c.canonical_name,cs.competition_modality
+    LIMIT ${limitParam} OFFSET ${offsetParam}`,values)).rows;
 }
 
 export async function sitemapCoreData() {

@@ -4,7 +4,7 @@ export const openapi = {
   servers:[{url:'/api/v1'}],
   tags:[{name:'Busca'},{name:'Instituições'},{name:'Cursos'},{name:'Geografia'},{name:'Ingresso'},{name:'Participação'},{name:'Conta'},{name:'Administração'}],
   components:{
-    securitySchemes:{bearerAuth:{type:'http',scheme:'bearer',bearerFormat:'opaque'}},
+    securitySchemes:{sessionCookie:{type:'apiKey',in:'cookie',name:'faculdade_perto_session'},bearerAuth:{type:'http',scheme:'bearer',bearerFormat:'opaque',description:'Alternativa para clientes externos. A aplicação web usa cookie HttpOnly.'}},
     schemas:{
       DataField:{type:'object',required:['value','status','source','sourceUrl','updatedAt'],properties:{value:{},status:{type:'string',enum:['confirmado','importado','nao_confirmado']},source:{type:['string','null']},sourceUrl:{type:['string','null'],format:'uri'},updatedAt:{type:['string','null'],format:'date-time'},reason:{type:'string'}}},
       Error:{type:'object',properties:{error:{type:'object',required:['code','message'],properties:{code:{type:'string'},message:{type:'string'},hint:{type:'string'},fields:{type:'object',additionalProperties:{type:'string'}}}}}},
@@ -19,8 +19,8 @@ export const openapi = {
     '/institutions/{id}':{get:{tags:['Instituições'],summary:'Detalha instituição',parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}],responses:{200:{description:'Instituição e registros de curso'},404:{description:'Não encontrada'}}}},
     '/courses':{get:{tags:['Cursos'],summary:'Lista cursos canônicos CINE',responses:{200:{description:'Cursos'}}}},
     '/campuses':{get:{tags:['Geografia'],summary:'Lista somente campi sustentados por fonte complementar',responses:{200:{description:'Campi ou aviso de indisponibilidade'}}}},
-    '/offerings':{get:{tags:['Cursos'],summary:'Lista somente ofertas individualizadas por fonte complementar',responses:{200:{description:'Ofertas ou aviso de indisponibilidade'}}}},
-    '/offerings/{id}':{get:{tags:['Cursos'],summary:'Detalha oferta ou representação agregada',parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}],responses:{200:{description:'Detalhe'}}}},
+    '/offerings':{get:{tags:['Cursos'],summary:'Lista somente ofertas individualizadas por fonte complementar',parameters:[['q','string'],['city','string'],['state','string'],['modality','string'],['degree','string'],['page','integer'],['limit','integer']].map(([name,type])=>({name,in:'query',schema:{type}})),responses:{200:{description:'Ofertas ou aviso de indisponibilidade'}}}},
+    '/offerings/{id}':{get:{tags:['Cursos'],summary:'Detalha uma oferta individual sustentada por fonte complementar',parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}],responses:{200:{description:'Oferta, unidade, endereço e proveniência'},404:{description:'Oferta não encontrada'}}}},
     '/catalog-records/{id}':{get:{tags:['Cursos'],summary:'Detalha um registro agregado do Censo',parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}],responses:{200:{description:'Registro com proveniência'},404:{description:'Não encontrado'}}}},
     '/campuses/nearby':{get:{tags:['Geografia'],summary:'Busca campi com coordenadas verificáveis',parameters:['lat','lng','radiusKm'].map((name)=>({name,in:'query',required:true,schema:{type:'number'}})),responses:{200:{description:'Campi e distâncias geodésicas'}}}},
     '/cutoffs':{get:{tags:['Ingresso'],summary:'Notas separadas por modalidade de concorrência',responses:{200:{description:'Notas sem agregação'}}}},
@@ -29,12 +29,12 @@ export const openapi = {
     '/corrections':{post:{tags:['Participação'],summary:'Envia correção para moderação',responses:{201:{description:'Recebida'},422:{$ref:'#/components/responses/Invalid'}}}},
     '/auth/register':{post:{tags:['Conta'],summary:'Cria conta e inicia sessão',responses:{201:{description:'Conta criada'},409:{description:'E-mail em uso'},422:{$ref:'#/components/responses/Invalid'}}}},
     '/auth/login':{post:{tags:['Conta'],summary:'Inicia sessão',responses:{200:{description:'Sessão criada'},401:{description:'Credenciais inválidas'}}}},
-    '/auth/session':{delete:{tags:['Conta'],summary:'Encerra e revoga a sessão atual',security:[{bearerAuth:[]}],responses:{204:{description:'Sessão encerrada'}}}},
-    '/me':{get:{tags:['Conta'],summary:'Obtém a pessoa autenticada',security:[{bearerAuth:[]}],responses:{200:{description:'Perfil'},401:{description:'Autenticação necessária'}}}},
-    '/me/plan':{get:{tags:['Conta'],summary:'Lista itens do Meu Plano',security:[{bearerAuth:[]}],responses:{200:{description:'Itens salvos'}}},post:{tags:['Conta'],summary:'Salva um registro no Meu Plano',security:[{bearerAuth:[]}],responses:{201:{description:'Item salvo'}}}},
-    '/me/plan/{id}':{delete:{tags:['Conta'],summary:'Remove um item do Meu Plano',security:[{bearerAuth:[]}],parameters:[{name:'id',in:'path',required:true,schema:{type:'string',pattern:'^[1-9][0-9]{0,19}$'}}],responses:{204:{description:'Removido'},404:{description:'Item não encontrado'}}}},
-    '/admin/corrections':{get:{tags:['Administração'],summary:'Lista fila de correções',security:[{bearerAuth:[]}],responses:{200:{description:'Fila'},403:{description:'Acesso negado'}}}},
-    '/admin/corrections/{id}':{patch:{tags:['Administração'],summary:'Modera uma correção e registra auditoria',security:[{bearerAuth:[]}],parameters:[{name:'id',in:'path',required:true,schema:{type:'integer'}}],responses:{200:{description:'Correção atualizada'},403:{description:'Acesso negado'}}}},
+    '/auth/session':{delete:{tags:['Conta'],summary:'Encerra e revoga a sessão atual',security:[{sessionCookie:[]},{bearerAuth:[]}],responses:{204:{description:'Sessão encerrada'}}}},
+    '/me':{get:{tags:['Conta'],summary:'Obtém a pessoa autenticada',security:[{sessionCookie:[]},{bearerAuth:[]}],responses:{200:{description:'Perfil'},401:{description:'Autenticação necessária'}}}},
+    '/me/plan':{get:{tags:['Conta'],summary:'Lista itens do Meu Plano',security:[{sessionCookie:[]},{bearerAuth:[]}],responses:{200:{description:'Itens salvos'}}},post:{tags:['Conta'],summary:'Salva um registro no Meu Plano',security:[{sessionCookie:[]},{bearerAuth:[]}],responses:{201:{description:'Item salvo'}}}},
+    '/me/plan/{id}':{delete:{tags:['Conta'],summary:'Remove um item do Meu Plano',security:[{sessionCookie:[]},{bearerAuth:[]}],parameters:[{name:'id',in:'path',required:true,schema:{type:'string',pattern:'^[1-9][0-9]{0,19}$'}}],responses:{204:{description:'Removido'},404:{description:'Item não encontrado'}}}},
+    '/admin/corrections':{get:{tags:['Administração'],summary:'Lista fila de correções',security:[{sessionCookie:[]},{bearerAuth:[]}],responses:{200:{description:'Fila'},403:{description:'Acesso negado'}}}},
+    '/admin/corrections/{id}':{patch:{tags:['Administração'],summary:'Modera uma correção e registra auditoria',security:[{sessionCookie:[]},{bearerAuth:[]}],parameters:[{name:'id',in:'path',required:true,schema:{type:'integer'}}],responses:{200:{description:'Correção atualizada'},403:{description:'Acesso negado'}}}},
     '/sitemap-data':{get:{tags:['Busca'],summary:'Resumo das entidades publicáveis para sitemap',responses:{200:{description:'Slugs institucionais, municípios e total de registros'}}}}
   }
 };

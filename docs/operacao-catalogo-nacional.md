@@ -12,7 +12,7 @@
 - campos preservados por registro de curso: **223**;
 - tamanho observado do banco após `VACUUM ANALYZE`: aproximadamente **2,2 GB**.
 
-O cluster local fica em `.local-postgres/`, ignorado pelo Git. `npm run dev` verifica e inicia esse cluster automaticamente. Para encerrá-lo manualmente, use `npm run db:local:stop`.
+O cluster local fica em `.local-postgres/`, ignorado pelo Git. `npm run dev:national` inicia esse cluster antes da aplicação; `npm run dev` usa o banco já configurado no `.env`. Para encerrá-lo manualmente, use `npm run db:local:stop`.
 
 ## Fontes e semântica
 
@@ -31,7 +31,7 @@ O catálogo não deve depender de uma única fonte. A ordem de confiança é:
 
 Cada informação complementar precisa guardar URL, data de coleta, hash do conteúdo e vínculo com `source_records`. Nomes populares, mantenedoras e marcas entram em `institution_aliases`, permitindo que uma pesquisa como “FEA” encontre FISMA e FCAA sem duplicar instituições. Ofertas recentes ficam separadas da fotografia censitária e nunca são apresentadas como Censo 2024.
 
-Não existe uma publicação pública nacional em tempo real capaz de provar literalmente todas as ofertas ativas. Por isso, a meta operacional é cobertura máxima verificável, atualização incremental e exposição transparente da fonte e da data de cada registro.
+Não existe uma publicação pública nacional em tempo real capaz de provar literalmente todas as ofertas ativas. Por isso, a meta operacional é cobertura máxima verificável, atualização incremental e exposição transparente da fonte e da data de cada registro. A primeira integração desse fluxo confirma Medicina presencial integral da FIRB/UNIANDRADINA em Andradina, com endereço e período de referência do portal oficial, sem inventar coordenadas de campus.
 
 ## Reproduzir a carga
 

@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { administrativeCategoryValues,foldedInstitutionSearchSql,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
+import { administrativeCategoryValues,courseRelevanceOrderSql,exactCityMatchSql,foldedInstitutionSearchSql,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
 
 describe('parseLocationFilter',()=>{
   it('interpreta uma UF digitada no campo de cidade',()=>{
@@ -34,5 +34,16 @@ describe('parseLocationFilter',()=>{
 
   it('mantém aliases institucionais como parte da busca nacional',()=>{
     expect(foldedInstitutionSearchSql()).toContain('institution_aliases');
+  });
+
+  it('prioriza nome exato antes de prefixo no autocomplete de cursos',()=>{
+    const sql=courseRelevanceOrderSql('$2','$3');
+    expect(sql).toContain('= $2 THEN 0');
+    expect(sql).toContain('LIKE $3 THEN 1');
+  });
+
+  it('não mistura Andradina com Nova Andradina no filtro de cidade',()=>{
+    expect(exactCityMatchSql()).toContain(' = ?');
+    expect(exactCityMatchSql()).not.toContain('LIKE');
   });
 });

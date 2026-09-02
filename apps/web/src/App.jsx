@@ -7,6 +7,7 @@ const HomePage=page(()=>import('./pages/HomePage.jsx'),'HomePage');
 const SearchPage=page(()=>import('./pages/SearchPage.jsx'),'SearchPage');
 const InstitutionPage=page(()=>import('./pages/InstitutionPage.jsx'),'InstitutionPage');
 const RecordPage=page(()=>import('./pages/RecordPage.jsx'),'RecordPage');
+const OfferingPage=page(()=>import('./pages/OfferingPage.jsx'),'OfferingPage');
 const FaqPage=page(()=>import('./pages/FaqPage.jsx'),'FaqPage');
 const ContactPage=page(()=>import('./pages/ContactPage.jsx'),'ContactPage');
 const CorrectionPage=page(()=>import('./pages/CorrectionPage.jsx'),'CorrectionPage');
@@ -25,7 +26,7 @@ const CompassPage=page(()=>import('./pages/CompassPage.jsx'),'CompassPage');
 export function App(){return <Suspense fallback={<main className="section compact-section" aria-live="polite"><div className="skeleton"/><span className="sr-only">Carregando página…</span></main>}><Routes><Route element={<SiteLayout/>}>
   <Route index element={<HomePage/>}/><Route path="buscar" element={<SearchPage/>}/>
   <Route path="bussola" element={<CompassPage/>}/>
-  <Route path="instituicoes/:slug" element={<InstitutionPage/>}/><Route path="ofertas/:id" element={<RecordPage/>}/>
+  <Route path="instituicoes/:slug" element={<InstitutionPage/>}/><Route path="ofertas/:id" element={<RecordPage/>}/><Route path="ofertas-verificadas/:id" element={<OfferingPage/>}/>
   <Route path="br/:uf/:city" element={<CityPage/>}/><Route path="duvidas" element={<FaqPage/>}/>
   <Route path="contato" element={<ContactPage/>}/><Route path="corrigir" element={<CorrectionPage/>}/>
   <Route path="enem" element={<EnemPage/>}/><Route path="entrar" element={<AuthPage/>}/><Route path="meu-plano" element={<PlanPage/>}/>
