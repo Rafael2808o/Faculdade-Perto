@@ -29,5 +29,8 @@ jobs:
       - name: Executar testes
         run: npm test
 
+      - name: Auditar dependências de produção
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Gerar build de produção
         run: npm run build

@@ -20,8 +20,10 @@ const sitemapIndex = (paths) => `<?xml version="1.0" encoding="UTF-8"?><sitemapi
 
 export function createApp() {
   const app = express();
+  app.set('query parser', 'simple');
   if (env.TRUST_PROXY) app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],fontSrc:["'self'",'https://fonts.gstatic.com'],imgSrc:["'self'",'data:','https://*.tile.openstreetmap.org'],connectSrc:["'self'"]}} }));
+  app.use((_req,res,next)=>{res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=(self)');next()});
   app.use(cors({ origin: env.WEB_ORIGIN.split(',').map((item) => item.trim()), credentials: false }));
   app.use(compression());
   app.use(express.json({ limit: '200kb' }));
@@ -75,7 +77,7 @@ export function createApp() {
       if(filePath.includes(`${join('assets','')}`))res.setHeader('Cache-Control','public, max-age=31536000, immutable');
       else if(filePath.endsWith('index.html'))res.setHeader('Cache-Control','no-cache');
     }}));
-    const publicRoutes=[/^\/$/,/^\/buscar\/?$/, /^\/instituicoes\/[^/]+\/?$/, /^\/ofertas\/[^/]+\/?$/, /^\/br\/[a-z]{2}\/[^/]+\/?$/, /^\/(bussola|duvidas|contato|corrigir|enem|entrar|meu-plano|comparar|obrigado|privacidade|termos)\/?$/, /^\/admin\/correcoes\/?$/];
+    const publicRoutes=[/^\/$/,/^\/buscar\/?$/, /^\/instituicoes\/[^/]+\/?$/, /^\/ofertas\/[^/]+\/?$/, /^\/ofertas-verificadas\/[^/]+\/?$/, /^\/br\/[a-z]{2}\/[^/]+\/?$/, /^\/(bussola|duvidas|contato|corrigir|enem|entrar|meu-plano|comparar|obrigado|privacidade|termos)\/?$/, /^\/admin\/correcoes\/?$/];
     app.get('/{*path}',(req,res,next)=>{if(req.path.startsWith('/api/'))return next();const known=publicRoutes.some((pattern)=>pattern.test(req.path));res.set('Cache-Control','no-cache');return res.status(known?200:404).sendFile(join(webDist,'index.html'))});
   }
   app.use(notFoundHandler);

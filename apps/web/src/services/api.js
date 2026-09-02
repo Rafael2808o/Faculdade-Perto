@@ -1,5 +1,3 @@
-import { getToken } from '../lib/auth.js';
-
 export class ApiError extends Error {
   constructor(payload, status) {
     super(payload?.error?.message || 'Não foi possível carregar os dados.');
@@ -9,12 +7,11 @@ export class ApiError extends Error {
 }
 
 export async function api(path, options = {}) {
-  const token = getToken();
   const response = await fetch(`/api/v1${path}`, {
     ...options,
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
   });

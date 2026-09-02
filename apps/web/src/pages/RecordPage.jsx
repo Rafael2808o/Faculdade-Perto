@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link,useNavigate,useParams } from 'react-router-dom';
 import { AlertTriangle,BookOpen,Bookmark,Columns3,MapPin } from 'lucide-react';
 import { api } from '../services/api.js';
-import { getToken } from '../lib/auth.js';
+import { clearSession, hasSession } from '../lib/auth.js';
 import { readCompare,writeCompare } from './ComparePage.jsx';
 import { Seo } from '../components/Seo.jsx';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
@@ -22,7 +22,7 @@ export function RecordPage(){
   const place=item.location.city?`${item.location.city}, ${item.location.state}`:'abrangência nacional';
   const title=`${item.course.name} em ${place} — ${item.institution.name}`;
   const ld={'@context':'https://schema.org','@type':'Course',name:item.course.name,provider:{'@type':'EducationalOrganization',name:item.institution.name},description:item.granularityNotice};
-  async function save(){if(!getToken()){navigate(`/entrar?voltar=${encodeURIComponent(`/ofertas/${id}`)}`);return}try{await api('/me/plan',{method:'POST',body:JSON.stringify({recordId:Number(id)})});setFeedback('Salvo no Meu Plano.')}catch(error){setFeedback(error.message)}}
+  async function save(){if(!hasSession()){navigate(`/entrar?voltar=${encodeURIComponent(`/ofertas/${id}`)}`);return}try{await api('/me/plan',{method:'POST',body:JSON.stringify({recordId:Number(id)})});setFeedback('Salvo no Meu Plano.')}catch(error){if(error.status===401){clearSession();navigate(`/entrar?voltar=${encodeURIComponent(`/ofertas/${id}`)}`);return}setFeedback(error.message)}}
   function compare(){const ids=readCompare();if(ids.some((value)=>String(value)===String(id))){navigate('/comparar');return}if(ids.length>=4){setFeedback('A comparação já tem quatro cursos. Remova um para continuar.');return}writeCompare([...ids,Number(id)]);setFeedback('Adicionado à comparação.')}
   return <>
     <Seo title={`${title} | Faculdade Perto`} description={`Registro do Censo 2024 para ${item.course.name}, com todos os campos oficiais e suas limitações.`} path={`/ofertas/${id}`} jsonLd={ld}/>

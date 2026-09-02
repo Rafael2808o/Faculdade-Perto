@@ -4,13 +4,13 @@ import {useState} from 'react';
 import {Link} from 'react-router-dom';
 import {Breadcrumbs} from '../components/Breadcrumbs.jsx';
 import {Seo} from '../components/Seo.jsx';
-import {getToken} from '../lib/auth.js';
+import {hasSession} from '../lib/auth.js';
 import {checklistProgress,decisionChecklist,readDecisionChecklist,writeDecisionChecklist} from '../lib/decisionPlan.js';
 import {api} from '../services/api.js';
 
 export function PlanPage(){
   const client=useQueryClient();
-  const logged=Boolean(getToken());
+  const logged=hasSession();
   const [checks,setChecks]=useState(readDecisionChecklist);
   const progress=checklistProgress(checks);
   const query=useQuery({queryKey:['plan'],queryFn:()=>api('/me/plan'),enabled:logged});
