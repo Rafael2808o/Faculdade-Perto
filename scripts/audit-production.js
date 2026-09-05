@@ -66,6 +66,14 @@ try{
   const courses=await request('/api/v1/courses?limit=1');
   assert(institutions.pagination.total===expected.institutions,'Total público de instituições divergente.');
   assert(courses.pagination.total===expected.courses,'Total público de cursos canônicos divergente.');
+  const usp=await request('/api/v1/institutions?q=USP&limit=5');
+  assert(usp.data[0]?.acronym?.value==='USP','O autocomplete não priorizou a sigla USP.');
+  const unesp=await request('/api/v1/institutions?q=Unesp&limit=5');
+  assert(unesp.data.some((item)=>item.acronym?.value==='UNESP'),'O autocomplete não encontrou a Unesp.');
+  const fea=await request('/api/v1/institutions?q=FEA%20Andradina&limit=5');
+  assert(fea.pagination.total>=2,'O alias FEA Andradina não encontrou as instituições reconciliadas.');
+  const medicineCourse=await request('/api/v1/courses?q=Medicina&limit=5');
+  assert(medicineCourse.data[0]?.canonical_name==='Medicina','O autocomplete não priorizou o curso Medicina.');
 
   for(const state of states){
     await assertSearch(`state=${state}`,(item)=>item.location.state===state,`UF ${state}`);
@@ -125,12 +133,27 @@ try{
   assert(verifiedMedicine?.source.url==='https://medicina.firb.br/','A oferta da FIRB perdeu a fonte oficial.');
   const verifiedDetail=await request(`/api/v1/offerings/${verifiedMedicine.id}`);
   assert(verifiedDetail.data.campus.address?.number==='756','O detalhe verificado perdeu o endereço oficial.');
+  const allVerifiedAndradina=await request('/api/v1/offerings?city=Andradina&limit=20');
+  assert(allVerifiedAndradina.pagination.total===8,'A cobertura institucional de Andradina deve ter 8 cursos com fonte oficial.');
+  for(const course of ['Agronomia','Direito','Enfermagem','Medicina','Medicina veterinária','Serviço social']){
+    assert(allVerifiedAndradina.data.some((item)=>item.course.name===course),`${course} não apareceu na cobertura de Andradina.`);
+  }
+  const agronomy=allVerifiedAndradina.data.find((item)=>item.course.name==='Agronomia');
+  assert(agronomy.campus.locationStatus==='nao_confirmado'&&agronomy.notice,'O conflito de endereço da Agronomia foi ocultado.');
   const historicalAndradina=await request('/api/v1/search?q=Medicina&city=Andradina&limit=100');
   assert(historicalAndradina.data.every((item)=>item.location.city==='Andradina'),'O filtro exato voltou a misturar Andradina e Nova Andradina.');
   await request('/api/v1/cutoffs');
 
   const score=await request('/api/v1/enem/score',{method:'POST',body:{scores:{languages:650,humanities:700,naturalSciences:680,mathematics:750,essay:800}}});
   assert(Number.isFinite(score.data?.score),'Simulador ENEM não calculou a nota.');
+  const history=await request('/api/v1/admission-history?limit=1');
+  const ufmgCoverage=history.coverage.institutions.find((item)=>item.acronym==='UFMG'&&item.year===2026);
+  assert(ufmgCoverage?.scenarios===10332&&ufmgCoverage?.courses===75&&ufmgCoverage?.courseShifts===94&&ufmgCoverage?.rounds===14,'A cobertura UFMG 2026 está divergente.');
+  const possibilities=await request('/api/v1/enem/possibilities',{method:'POST',body:{q:'Medicina',state:'MG',competitionModality:'AC',round:'Chamada regular',
+    scores:{languages:700,humanities:700,naturalSciences:700,mathematics:700,essay:800}}});
+  const medicineScenario=possibilities.data.find((item)=>item.canonical_name==='MEDICINA');
+  assert(medicineScenario?.comparison?.comparable&&medicineScenario.round==='Chamada regular','A comparação oficial de Medicina/UFMG não funcionou.');
+  assert(medicineScenario.source_url.startsWith('https://www.ufmg.br/sisu/'),'A comparação perdeu a fonte oficial da UFMG.');
 
   const contact=await request('/api/v1/contact',{method:'POST',expectedStatus:201,body:{name:'Teste de qualidade',email,subject:`Auditoria ${marker}`,message:'Mensagem automática temporária para verificar o formulário de contato.'}});
   assert(contact.data.id,'Contato não foi gravado.');

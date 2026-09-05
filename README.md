@@ -18,7 +18,7 @@ O serviço gratuito pode levar alguns segundos para despertar no primeiro acesso
 - Bússola da Escolha com preferências explicáveis, compatibilidade e cenários alternativos;
 - referências municipais claramente separadas de campi e ofertas atuais verificadas exibidas em um bloco próprio;
 - páginas de instituição, registro de curso, cidade, FAQ, contato, correção, agradecimento e 404;
-- calculadora Enem simples e ponderada, com aviso de treineiro e comparação opcional com históricos oficiais já importados;
+- calculadora Enem simples e ponderada, com aviso de treineiro e comparação opcional com 10.332 cenários oficiais do SiSU/UFMG 2026;
 - conta com sessão revogável em cookie `HttpOnly`, Meu Plano persistente, checklist local e comparação de até quatro cursos;
 - fila administrativa de correções com perfis, moderação e trilha de auditoria;
 - selos de dado importado/confirmado/não confirmado com fonte e data;
@@ -138,7 +138,7 @@ npm run test:smoke -- https://faculdade-perto.onrender.com
 npm run test:production
 ```
 
-Os 82 testes automatizados cobrem média simples/ponderada, aviso de treineiro, comparação com cortes, separação de modalidades e chamadas, estados sem histórico, mapa sem sobreposição, controle de raio acessível, autocomplete por teclado, ofertas verificadas, campo sem fonte impedido de virar confirmado, distância geodésica compatível com CockroachDB, IDs BIGINT sem perda de precisão, chave idempotente do importador, filtros, Bússola, cenários, checklist de decisão, autenticação por cookie `HttpOnly`, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit, interpretação segura da query string e validações da correção. O smoke test acrescenta verificações integradas de banco, busca, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404. A auditoria de produção percorre ainda os 27 estados, combinações de filtros, ordenações, autenticação e gravações com limpeza posterior.
+Os 91 testes automatizados cobrem média simples/ponderada, aviso de treineiro, comparação com pesos da mesma edição, separação de modalidades e chamadas, estados sem histórico, mapa sem sobreposição, controle de raio acessível, autocomplete por teclado, ofertas verificadas, campo sem fonte impedido de virar confirmado, cache público limitado, distância geodésica compatível com CockroachDB, IDs BIGINT sem perda de precisão, chave idempotente do importador, filtros, Bússola, cenários, checklist de decisão, autenticação por cookie `HttpOnly`, autorização, isolamento do Meu Plano, revogação de sessão, limites HTTP, CORS, rate limit, interpretação segura da query string e validações da correção. O smoke test acrescenta verificações integradas de banco, busca, detalhe, instituição, OpenAPI, robots, sitemaps, páginas React e 404. A auditoria de produção percorre ainda os 27 estados, combinações de filtros, ordenações, autenticação e gravações com limpeza posterior.
 
 Consulte [a operação do catálogo nacional](./docs/operacao-catalogo-nacional.md). A carga completa foi ensaiada localmente: 2.561 IES, 720.349 registros de curso, 223 campos por registro e zero rejeições. A estratégia evita materializar cerca de 139 milhões de valores `QT_*` como linhas separadas.
 
@@ -157,7 +157,7 @@ O servidor Express entrega o frontend compilado, a API, `/robots.txt` e `/sitema
 | Saúde | `GET /api/health` |
 | Busca | `GET /api/v1/search`, `GET /api/v1/institutions`, `GET /api/v1/courses` |
 | Catálogo | `GET /api/v1/catalog-records/:id`, `GET /api/v1/institutions/:id`, `GET /api/v1/offerings`, `GET /api/v1/offerings/:id` |
-| Ingresso | `POST /api/v1/enem/score`, `GET /api/v1/cutoffs` |
+| Ingresso | `POST /api/v1/enem/score`, `POST /api/v1/enem/possibilities`, `GET /api/v1/admission-history`, `GET /api/v1/cutoffs` |
 | Autenticação | `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `DELETE /api/v1/auth/session` |
 | Meu Plano | `GET /api/v1/me/plan`, `POST /api/v1/me/plan`, `DELETE /api/v1/me/plan/:id` |
 | Participação | `POST /api/v1/contact`, `POST /api/v1/corrections` |
@@ -183,7 +183,7 @@ Consulte a [auditoria defensiva de 1º de setembro de 2026](./docs/auditoria-seg
 
 ## Estado do projeto
 
-A branch `master` é a fonte de publicação. A carga de referência contém 2.561 instituições, 353 cursos canônicos, 3.551 municípios e 720.349 registros censitários, com os 223 campos oficiais preservados por registro. A primeira oferta complementar confirmada é Medicina presencial integral da FIRB/UNIANDRADINA em Andradina, vinculada ao portal institucional e exibida separadamente do Censo. Os demais campi, endereços e ofertas continuam não confirmados até receberem uma fonte complementar confiável. A estrutura de notas de corte está pronta, mas a base de produção ainda não contém um histórico oficial importado; nessa situação a interface informa a ausência em vez de estimar ou inventar chamadas. Veja [a metodologia de possibilidades pelo Enem](./docs/possibilidades-enem.md) e [a política de fontes complementares](./docs/fontes-complementares.md).
+A branch `master` é a fonte de publicação. A carga de referência contém 2.561 instituições, 353 cursos canônicos, 3.551 municípios e 720.349 registros censitários, com os 223 campos oficiais preservados por registro. Em Andradina, a camada complementar possui 8 cursos ligados a páginas institucionais: Medicina da FIRB/UNIANDRADINA e 7 páginas de cursos da FEA; Agronomia preserva um aviso de endereço divergente em vez de escolher um endereço por suposição. A base também contém 10.332 cenários SiSU/UFMG 2026, correspondentes à chamada regular e a 13 relatórios acumulados após chamadas da lista de espera, reconciliados com 94 combinações de curso/turno do termo de adesão. Isso é cobertura parcial, não um histórico nacional. Os demais campi, endereços, ofertas e processos continuam não confirmados até receberem fonte complementar confiável. Veja [a metodologia de possibilidades pelo Enem](./docs/possibilidades-enem.md) e [a política de fontes complementares](./docs/fontes-complementares.md).
 
 ## Contribuição
 
@@ -200,3 +200,5 @@ A branch `master` é a fonte de publicação. A carga de referência contém 2.5
 - https://www.gov.br/mec/pt-br/politica-regulacao-supervisao-educacao-superior/cadastro-nacional-de-cursos-e-ies
 - https://medicina.firb.br/
 - https://www.fea.br/
+- https://www.ufmg.br/sisu/vagas/notas-de-corte/
+- https://www.ufmg.br/sisu/repositorio/?edicao=sisu-ufmg-2026&repositorio_tipo=nota-corte

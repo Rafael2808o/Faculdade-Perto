@@ -1,4 +1,4 @@
-# Auditoria defensiva de segurança — atualizada em 02/09/2026
+# Auditoria defensiva de segurança — atualizada em 04/09/2026
 
 ## Escopo
 
@@ -18,6 +18,8 @@ Não foi identificada vulnerabilidade crítica ou alta conhecida após as corre�
 | Baixa | Política de recursos do navegador não declarava câmera/microfone/geolocalização | `Permissions-Policy` bloqueia câmera e microfone e limita geolocalização à própria origem | teste manual dos cabeçalhos após publicação |
 | Baixa | Documentação OpenAPI descrevia apenas Bearer | Cookie de sessão e compatibilidade Bearer documentados | OpenAPI gerada no build |
 | Média | `qs` 6.15.3 transitivo possuía duas falhas de negação de serviço publicadas em 02/09/2026 | Versão corrigida 6.16.0 fixada para toda a árvore; Express configurado explicitamente com `query parser: simple` | `npm audit`, lockfile e teste de configuração |
+| Média | A página inicial da busca ordenava todo o catálogo antes do limite, ampliando o risco de indisponibilidade por consultas repetidas | Paginação seleciona primeiro pela chave indexada; cache público tem TTL, número de entradas e tamanho total limitados | medição no banco remoto e testes do cache |
+| Baixa | Uma futura comparação de notas poderia expor valores pessoais em URL ou cache intermediário | Comparação implementada somente por `POST`, com `Cache-Control: no-store`, sem persistir notas ou critérios sensíveis | teste de componente e teste da rota |
 
 ## Controles confirmados
 
@@ -35,6 +37,8 @@ Não foi identificada vulnerabilidade crítica ou alta conhecida após as corre�
 - pool, conexão e consultas de banco possuem limites de tempo;
 - builds de produção sem source maps públicos;
 - segredos e `.env` ignorados pelo Git.
+- cache limitado apenas a respostas públicas imutáveis do catálogo; notas, sessões e dados de conta nunca entram nele;
+- importadores remotos usam lista permitida de domínio, HTTPS, limite de tamanho, hash e validação estrutural.
 
 ## Riscos residuais
 
@@ -47,9 +51,10 @@ Não foi identificada vulnerabilidade crítica ou alta conhecida após as corre�
 
 ## Validação executada
 
-- 82 testes automatizados de API e frontend;
+- 91 testes automatizados de API e frontend;
 - build Vite de produção sem source maps;
 - `git diff --check` sem erro;
 - `npm audit` sem vulnerabilidade conhecida;
 - revisão visual local de mapa e calculadora em desktop e 390 × 844;
+- auditoria do npm em 04/09/2026: 135 dependências de produção, zero vulnerabilidades conhecidas;
 - validação HTTP e smoke test de produção previstos após o deploy desta versão.
