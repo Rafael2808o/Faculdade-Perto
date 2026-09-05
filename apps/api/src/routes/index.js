@@ -7,6 +7,8 @@ import * as enem from '../controllers/enemController.js';
 import * as auth from '../controllers/authController.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate } from '../middlewares/authenticate.js';
+import { getAdmissionHistory } from '../services/admissionHistoryService.js';
+import { admissionHistoryQuery, admissionPossibilityBody } from './schemas.js';
 import { contactBody, correctionBody, correctionReviewBody, courseQuery, cutoffQuery, enemBody, idParams, institutionQuery, loginBody, nearbyQuery, numericIdParams, offeringQuery, paginationSchema, planBody, registerBody, searchQuery } from './schemas.js';
 
 const writeLimiter = rateLimit({ windowMs:env.RATE_LIMIT_WINDOW_MS, limit:env.RATE_LIMIT_MAX, standardHeaders:'draft-8', legacyHeaders:false, message:{error:{code:'MUITAS_TENTATIVAS',message:'Muitas mensagens foram enviadas deste endereço.',hint:'Aguarde alguns minutos antes de tentar novamente.'}} });
@@ -25,6 +27,13 @@ apiRouter.get('/catalog-records/:id',validate(idParams,'params'),catalog.getReco
 apiRouter.get('/search',validate(searchQuery),catalog.search);
 apiRouter.get('/search/map',validate(searchQuery),catalog.searchMap);
 apiRouter.get('/cutoffs',validate(cutoffQuery),catalog.listCutoffs);
+apiRouter.get('/admission-history',validate(admissionHistoryQuery),async(req,res,next)=>{
+  try{res.json(await getAdmissionHistory(req.validated.query));}catch(error){next(error);}
+});
+apiRouter.post('/enem/possibilities',validate(admissionPossibilityBody,'body'),async(req,res,next)=>{
+  res.set('Cache-Control','no-store');
+  try{res.json(await getAdmissionHistory(req.validated.body));}catch(error){next(error);}
+});
 apiRouter.post('/enem/score',validate(enemBody,'body'),enem.score);
 apiRouter.post('/contact',writeLimiter,validate(contactBody,'body'),write.contact);
 apiRouter.post('/corrections',writeLimiter,validate(correctionBody,'body'),write.correction);

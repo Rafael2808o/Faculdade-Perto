@@ -58,3 +58,10 @@ const score = z.coerce.number().min(0).max(1000);
 const scores = z.object({ languages:score, humanities:score, naturalSciences:score, mathematics:score, essay:score.int('A nota de redação deve ser inteira.') });
 const weights = z.object({ languages:z.coerce.number().positive(), humanities:z.coerce.number().positive(), naturalSciences:z.coerce.number().positive(), mathematics:z.coerce.number().positive(), essay:z.coerce.number().positive() });
 export const enemBody = z.object({ scores, weights:weights.optional(), trainee:z.boolean().default(false) });
+export const admissionHistoryQuery = cutoffQuery.omit({score:true}).extend({
+  year:z.coerce.number().int().min(2010).max(2100).optional(),
+  roundKind:z.enum(['regular','waiting_snapshot']).optional(),
+  round:z.enum(['Chamada regular',...Array.from({length:13},(_,index)=>`Após a ${index+1}ª chamada da lista de espera`)]).optional(),
+  shift:z.enum(['matutino','vespertino','noturno','integral']).optional()
+}).strip();
+export const admissionPossibilityBody = admissionHistoryQuery.extend({scores,trainee:z.boolean().default(false)}).strict();

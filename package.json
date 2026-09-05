@@ -16,6 +16,8 @@
     "db:local:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local-postgres.ps1",
     "db:local:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local-postgres.ps1",
     "import:censo": "npm run import:censo -w @faculdade-perto/api",
+    "collect:ufmg": "node --use-system-ca scripts/collect-ufmg-history.js",
+    "import:ufmg": "node --use-system-ca scripts/import-ufmg-history.js",
     "import:municipalities": "npm run import:municipalities -w @faculdade-perto/api",
     "db:migrate:cockroach:data": "node scripts/migrate-postgres-to-cockroach.js",
     "db:migrate:cockroach:catalog": "node scripts/migrate-catalog-with-molt.js",
@@ -25,6 +27,7 @@
     "db:verify:facets": "node scripts/verify-search-facets.js",
     "test:smoke": "node scripts/smoke-test.js",
     "test:production": "node --use-system-ca scripts/audit-production.js",
+    "test:browser": "node --use-system-ca scripts/qa-browser.js",
     "start": "npm run start -w @faculdade-perto/api"
   },
   "devDependencies": {
