@@ -19,7 +19,7 @@ describe('searchQuery',()=>{
 
   it('exige localização para ordenar por distância',()=>{
     expect(()=>searchQuery.parse({sort:'distance'})).toThrow(/localização/);
-    expect(searchQuery.parse({sort:'distance',lat:'-23.55',lng:'-46.63'}).sort).toBe('distance');
+    expect(searchQuery.parse({sort:'distance',lat:'-23.55',lng:'-46.63'})).toMatchObject({sort:'distance',radiusKm:25});
   });
 
   it('aceita raio somente junto da localização',()=>{

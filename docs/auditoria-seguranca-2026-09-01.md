@@ -18,7 +18,7 @@ Não foi identificada vulnerabilidade crítica ou alta conhecida após as corre�
 | Baixa | Política de recursos do navegador não declarava câmera/microfone/geolocalização | `Permissions-Policy` bloqueia câmera e microfone e limita geolocalização à própria origem | teste manual dos cabeçalhos após publicação |
 | Baixa | Documentação OpenAPI descrevia apenas Bearer | Cookie de sessão e compatibilidade Bearer documentados | OpenAPI gerada no build |
 | Média | `qs` 6.15.3 transitivo possuía duas falhas de negação de serviço publicadas em 02/09/2026 | Versão corrigida 6.16.0 fixada para toda a árvore; Express configurado explicitamente com `query parser: simple` | `npm audit`, lockfile e teste de configuração |
-| Média | A página inicial da busca ordenava todo o catálogo antes do limite, ampliando o risco de indisponibilidade por consultas repetidas | Paginação seleciona primeiro pela chave indexada; cache público tem TTL, número de entradas e tamanho total limitados | medição no banco remoto e testes do cache |
+| Média | A busca e a ordenação alfabética processavam centenas de milhares de vínculos antes do limite, ampliando o risco de indisponibilidade por consultas repetidas | A busca padrão seleciona primeiro pela chave indexada; a ordem alfabética pagina por curso e instituição; o cache público tem TTL, número de entradas e tamanho total limitados | equivalência de IDs contra a consulta anterior, medição no banco remoto e testes de regressão |
 | Baixa | Uma futura comparação de notas poderia expor valores pessoais em URL ou cache intermediário | Comparação implementada somente por `POST`, com `Cache-Control: no-store`, sem persistir notas ou critérios sensíveis | teste de componente e teste da rota |
 
 ## Controles confirmados
@@ -51,10 +51,12 @@ Não foi identificada vulnerabilidade crítica ou alta conhecida após as corre�
 
 ## Validação executada
 
-- 91 testes automatizados de API e frontend;
+- 93 testes automatizados de API e frontend;
 - build Vite de produção sem source maps;
 - `git diff --check` sem erro;
 - `npm audit` sem vulnerabilidade conhecida;
 - revisão visual local de mapa e calculadora em desktop e 390 × 844;
 - auditoria do npm em 04/09/2026: 135 dependências de produção, zero vulnerabilidades conhecidas;
-- validação HTTP e smoke test de produção previstos após o deploy desta versão.
+- smoke test de produção com 18 rotas aprovadas;
+- auditoria de produção com 104 verificações, 27 estados e 28 grupos de filtros aprovados;
+- QA no navegador em desktop e 390 × 844, sem sobreposição, rolagem horizontal ou erro de console.

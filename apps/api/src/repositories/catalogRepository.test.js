@@ -1,5 +1,12 @@
-import { describe,expect,it } from 'vitest';
-import { administrativeCategoryValues,courseRelevanceOrderSql,exactCityMatchSql,foldedInstitutionSearchSql,greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter } from './catalogRepository.js';
+import { beforeEach,describe,expect,it,vi } from 'vitest';
+
+vi.mock('../database/pool.js',()=>({pool:{query:vi.fn()}}));
+
+const { pool }=await import('../database/pool.js');
+const {
+  administrativeCategoryValues,courseRelevanceOrderSql,exactCityMatchSql,foldedInstitutionSearchSql,
+  greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter,searchCatalog
+}=await import('./catalogRepository.js');
 
 describe('parseLocationFilter',()=>{
   it('interpreta uma UF digitada no campo de cidade',()=>{
@@ -45,5 +52,34 @@ describe('parseLocationFilter',()=>{
   it('não mistura Andradina com Nova Andradina no filtro de cidade',()=>{
     expect(exactCityMatchSql()).toContain(' = ?');
     expect(exactCityMatchSql()).not.toContain('LIKE');
+  });
+});
+
+describe('paginação alfabética do catálogo',()=>{
+  beforeEach(()=>pool.query.mockReset());
+
+  it('pagina por curso e instituição antes de carregar os registros',async()=>{
+    pool.query
+      .mockResolvedValueOnce({rows:[{total:'5'}]})
+      .mockResolvedValueOnce({rows:[{id:'10',canonical_name:'Administração'}]})
+      .mockResolvedValueOnce({rows:[{group_count:'5'}]})
+      .mockResolvedValueOnce({rows:[{name:'Universidade Exemplo',group_count:'5'}]})
+      .mockResolvedValueOnce({rows:[{id:'101',canonical_name:'Administração',institution_name:'Universidade Exemplo',total:'5'}]});
+
+    const rows=await searchCatalog({page:1,limit:1,sort:'name'});
+
+    expect(rows).toEqual([{id:'101',canonical_name:'Administração',institution_name:'Universidade Exemplo',total:'5'}]);
+    expect(pool.query).toHaveBeenCalledTimes(5);
+    expect(pool.query.mock.calls[4][0]).toContain('ORDER BY ccr.id');
+    expect(pool.query.mock.calls[4][0]).not.toContain('count(*) OVER()');
+  });
+
+  it('não percorre os grupos quando a página está além do total',async()=>{
+    pool.query
+      .mockResolvedValueOnce({rows:[{total:'5'}]})
+      .mockResolvedValueOnce({rows:[{id:'10',canonical_name:'Administração'}]});
+
+    await expect(searchCatalog({page:2,limit:5,sort:'name'})).resolves.toEqual([]);
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 });

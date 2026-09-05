@@ -118,6 +118,87 @@ export async function listCourses({ page, limit, q, degree, modality }) {
     ORDER BY ${ordering},c.id`, values)).rows;
 }
 
+async function searchCatalogByName({ values, groupingValues, where, distanceSql, page, limit, queryFiltered }) {
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  let groups;
+  let total;
+  if (queryFiltered) {
+    groups = (await pool.query(`SELECT c.id,c.canonical_name,count(*)::int group_count
+      FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+      LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id ${clause}
+      GROUP BY c.id,c.canonical_name ORDER BY c.canonical_name,c.id`, groupingValues)).rows;
+    total = groups.reduce((sum,group)=>sum+Number(group.group_count),0);
+  } else {
+    const [totalResult,orderedCourses] = await Promise.all([
+      pool.query(`SELECT count(*)::int total FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+        LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id ${clause}`,groupingValues),
+      pool.query('SELECT id,canonical_name FROM courses ORDER BY canonical_name,id')
+    ]);
+    total = Number(totalResult.rows[0]?.total || 0);
+    if ((page-1)*limit >= total) return [];
+    const requestedEnd = Math.min(total,(page-1)*limit+limit);
+    groups = [];
+    let covered = 0;
+    for (const course of orderedCourses.rows) {
+      const courseValues = [...groupingValues,course.id];
+      const courseParam = `$${groupingValues.length+1}`;
+      const courseClause = [...where,`ccr.course_id=${courseParam}`].join(' AND ');
+      const countResult = await pool.query(`SELECT count(*)::int group_count FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+        LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id WHERE ${courseClause}`,courseValues);
+      const groupCount = Number(countResult.rows[0]?.group_count || 0);
+      if (!groupCount) continue;
+      groups.push({...course,group_count:groupCount});
+      covered += groupCount;
+      if (covered >= requestedEnd) break;
+    }
+  }
+  let skipped = (page-1)*limit;
+  let remaining = limit;
+  const rows = [];
+
+  for (const course of groups) {
+    const courseCount = Number(course.group_count);
+    if (skipped >= courseCount) { skipped -= courseCount; continue; }
+    const institutionValues = [...groupingValues,course.id];
+    const institutionCourseParam = `$${groupingValues.length+1}`;
+    const institutionClause = [...where,`ccr.course_id=${institutionCourseParam}`].join(' AND ');
+    const institutions = (await pool.query(`SELECT i.name,count(*)::int group_count
+      FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+      LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id
+      WHERE ${institutionClause} GROUP BY i.name ORDER BY i.name`,institutionValues)).rows;
+
+    for (const institution of institutions) {
+      const institutionCount = Number(institution.group_count);
+      if (skipped >= institutionCount) { skipped -= institutionCount; continue; }
+      const take = Math.min(remaining,institutionCount-skipped);
+      const detailValues = [...values,course.id,institution.name,total,take,skipped];
+      const courseParam = `$${values.length+1}`;
+      const institutionParam = `$${values.length+2}`;
+      const totalParam = `$${values.length+3}`;
+      const limitParam = `$${values.length+4}`;
+      const offsetParam = `$${values.length+5}`;
+      const detailClause = [...where,`ccr.course_id=${courseParam}`,`i.name=${institutionParam}`].join(' AND ');
+      const groupRows = (await pool.query(`SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.dimension, ccr.free_indicator, ccr.census_year,
+        ccr.daytime_seats,ccr.nighttime_seats,
+        c.id course_id,c.slug course_slug,c.cine_code,c.canonical_name,i.id institution_id,i.name institution_name,i.acronym,i.slug institution_slug,
+        i.education_network,i.administrative_category,i.academic_organization,m.name municipality_name,m.slug municipality_slug,s.abbreviation state_abbreviation,
+        m.reference_longitude lng,m.reference_latitude lat,m.location_note,${distanceSql} distance_km,
+        src.name source_name,src.canonical_url source_url,ss.imported_at,
+        ccr.census_seats,ccr.enrolled,${totalParam}::int8 total
+        FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+        LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id
+        LEFT JOIN source_snapshots ss ON ss.id=ccr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
+        WHERE ${detailClause} ORDER BY ccr.id LIMIT ${limitParam} OFFSET ${offsetParam}`,detailValues)).rows;
+      rows.push(...groupRows);
+      remaining -= groupRows.length;
+      skipped = 0;
+      if (remaining === 0) break;
+    }
+    if (remaining === 0) break;
+  }
+  return rows;
+}
+
 export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, radiusKm, page, limit, sort, lat, lng }) {
   const values = [];
   const where = [];
@@ -158,6 +239,7 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   if (shift === 'noturno') where.push('ccr.nighttime_seats > 0');
   if (dimension) add(`ccr.dimension = ?`, dimension);
   if (minSeats !== undefined) add(`ccr.census_seats >= ?`, minSeats);
+  const valuesBeforeOrigin = values.length;
   const hasOrigin = Number.isFinite(lat) && Number.isFinite(lng);
   let distanceSql = 'NULL::double precision';
   if (hasOrigin) {
@@ -170,6 +252,10 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
     }
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  if (sort === 'name') {
+    const groupingValues = hasOrigin && radiusKm === undefined ? values.slice(0,valuesBeforeOrigin) : values;
+    return searchCatalogByName({values,groupingValues,where,distanceSql,page,limit,queryFiltered:Boolean(q)});
+  }
   const order = sort === 'distance' && hasOrigin ? 'distance_km NULLS LAST,c.canonical_name,i.name' : sort === 'name' ? 'c.canonical_name,i.name' : sort === 'seats' ? 'ccr.census_seats DESC NULLS LAST,c.canonical_name' : relevanceOrder;
   values.push(limit, (page - 1) * limit);
   return (await pool.query(`WITH selected AS MATERIALIZED (
