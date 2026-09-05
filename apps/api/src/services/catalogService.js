@@ -4,10 +4,16 @@ import { AppError } from '../errors/AppError.js';
 import { importedField, unconfirmedField } from '../utils/dataField.js';
 import { preserveCompetitionModalities } from './cutoffService.js';
 import { env } from '../config/env.js';
+import { createPublicCatalogCache, publicCatalogCacheKey } from './publicCatalogCache.js';
+
+const publicCache = createPublicCatalogCache();
 
 async function call(name,...args){
   if(env.DATA_MODE==='demo') return demoRepository[name](...args);
-  try{return await repository[name](...args)}catch(error){
+  try{
+    const key = publicCatalogCacheKey(name,args);
+    return key ? await publicCache.get(key,()=>repository[name](...args)) : await repository[name](...args);
+  }catch(error){
     if(env.DATA_MODE==='auto'&&['ECONNREFUSED','ENOTFOUND','57P01'].includes(error.code)) return demoRepository[name](...args);
     throw error;
   }
@@ -96,13 +102,14 @@ export async function getNearby(filters) {
 function offeringDto(row){
   return {
     resultType:'verified_course_offering',id:row.id,externalCode:row.external_code,
-    course:{name:row.canonical_name,slug:row.course_slug,degree:row.degree,modality:row.modality,shift:row.shift},
+    course:{name:row.canonical_name,slug:row.course_slug,degree:row.degree,modality:row.modality,shift:row.shift==='nao_confirmado'?(row.reported_shift||null):row.shift},
     institution:{name:row.institution_name,acronym:row.acronym,slug:row.institution_slug},
     campus:{name:row.campus_name,address:row.campus_address,locationStatus:row.location_status,latitude:row.latitude===null?null:Number(row.latitude),longitude:row.longitude===null?null:Number(row.longitude)},
     location:{city:row.municipality_name,state:row.state_abbreviation},
     status:{regulatory:row.regulatory_status,data:row.data_status},
     source:{name:row.source_name,url:row.source_url,referencePeriod:row.reference_period,importedAt:row.imported_at},
-    updatedAt:row.updated_at
+    updatedAt:row.updated_at,
+    notice:row.source_note||row.source_notice||'A fonte confirma o curso; consulte a instituição sobre calendário de ingresso e vagas disponíveis.'
   };
 }
 

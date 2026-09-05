@@ -15,13 +15,19 @@ Uma oferta atual nunca substitui nem altera silenciosamente a linha histórica d
 
 Cada registro complementar guarda fonte, URL canônica, período de referência, data de coleta, hash, chave natural e payload original. A migration é idempotente e aliases não criam uma segunda instituição.
 
-## Primeiro registro verificado
+## Cursos com fonte institucional em Andradina
 
 Em 1º de setembro de 2026 foi vinculada a oferta de Medicina, bacharelado presencial integral, da Faculdades Integradas Rui Barbosa (FIRB/UNIANDRADINA), em Andradina. O portal oficial informa o período 2026.2 e o endereço Rua Rodrigues Alves, 756, Centro.
 
 Fonte: <https://medicina.firb.br/>.
 
 A página oficial não publica coordenadas geográficas verificáveis. O site mostra o endereço confirmado, mas não cria um marcador exato de campus. Isso evita apresentar um centroide municipal como localização física.
+
+Em 3 de setembro de 2026 foram vinculadas sete páginas do portal oficial da Fundação Educacional de Andradina: Agronomia, Direito, Educação Física — Bacharelado, Educação Física — Licenciatura, Enfermagem, Medicina Veterinária e Serviço Social. A modalidade e o vínculo institucional foram reconciliados com o Censo 2024. Quando a página declara turno, ele é preservado; a expressão “funcionamento” de uma secretaria não é convertida em turno do curso.
+
+Fonte: <https://www.fea.br/> e as páginas de cada curso vinculadas nos registros.
+
+A página de Agronomia apresenta numeração diferente do rodapé institucional. O curso aparece com aviso de endereço em revisão e sem número confirmado. “Curso em fonte oficial” significa que a página institucional lista o curso; não significa, isoladamente, processo seletivo aberto ou situação regulatória atual confirmada.
 
 ## Reconciliação
 
@@ -34,4 +40,4 @@ A página oficial não publica coordenadas geográficas verificáveis. O site mo
 
 ## Limite atual
 
-Esta estrutura permite ampliar a cobertura nacional com segurança, mas não significa que todas as ofertas atuais do Brasil já estejam confirmadas. A carga principal continua sendo o Censo 2024, e a cobertura complementar cresce conforme fontes oficiais podem ser vinculadas sem ambiguidade. O site deve informar essa diferença em toda listagem e detalhe.
+Esta estrutura permite ampliar a cobertura nacional com segurança, mas não significa que todas as ofertas atuais do Brasil já estejam confirmadas. A carga principal continua sendo o Censo 2024; a cobertura complementar atual foi aprofundada em Andradina e cresce conforme fontes oficiais podem ser vinculadas sem ambiguidade. O site deve informar essa diferença em toda listagem e detalhe.

@@ -102,18 +102,28 @@ export async function listCourses({ page, limit, q, degree, modality }) {
   }
   if (degree) add(`ccr.degree = ?`, degree);
   if (modality) add(`ccr.modality = ?`, modality);
-  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const courseConditions = where.filter(condition => !condition.startsWith('ccr.'));
+  const recordConditions = where.filter(condition => condition.startsWith('ccr.'));
+  const recordClause = ['ccr.course_id=c.id', ...recordConditions].join(' AND ');
+  courseConditions.push(`EXISTS (SELECT 1 FROM course_catalog_records ccr WHERE ${recordClause})`);
   values.push(limit, (page - 1) * limit);
-  return (await pool.query(`SELECT c.id,c.cine_code,c.canonical_name,c.slug,c.cine_general_area_name,
-    count(DISTINCT ccr.id)::int record_count, count(DISTINCT ccr.institution_id)::int institution_count, count(*) OVER() total
-    FROM courses c JOIN course_catalog_records ccr ON ccr.course_id=c.id ${clause}
-    GROUP BY c.id ORDER BY ${ordering} LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
+  // Select the small course page first; aggregate records only for those courses.
+  return (await pool.query(`WITH selected AS MATERIALIZED (
+    SELECT c.id,c.cine_code,c.canonical_name,c.slug,c.cine_general_area_name,count(*) OVER() total
+    FROM courses c WHERE ${courseConditions.join(' AND ')}
+    ORDER BY ${ordering},c.id LIMIT $${values.length - 1} OFFSET $${values.length}
+  ) SELECT c.*,counts.record_count,counts.institution_count FROM selected c
+    CROSS JOIN LATERAL (SELECT count(*)::int record_count,count(DISTINCT ccr.institution_id)::int institution_count
+      FROM course_catalog_records ccr WHERE ${recordClause}) counts
+    ORDER BY ${ordering},c.id`, values)).rows;
 }
 
 export async function searchCatalog({ q, city, state, network, modality, degree, organization, category, free, shift, dimension, minSeats, radiusKm, page, limit, sort, lat, lng }) {
   const values = [];
   const where = [];
-  let relevanceOrder = 'c.canonical_name,i.name';
+  // A busca inicial usa a chave indexada. Ordenar mais de 700 mil vínculos por
+  // nome antes de aplicar LIMIT fazia a primeira página esperar dezenas de segundos.
+  let relevanceOrder = 'ccr.id';
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
   if (q) {
     const normalizedQuery = foldText(q);
@@ -162,18 +172,22 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const order = sort === 'distance' && hasOrigin ? 'distance_km NULLS LAST,c.canonical_name,i.name' : sort === 'name' ? 'c.canonical_name,i.name' : sort === 'seats' ? 'ccr.census_seats DESC NULLS LAST,c.canonical_name' : relevanceOrder;
   values.push(limit, (page - 1) * limit);
-  return (await pool.query(`SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.dimension, ccr.free_indicator, ccr.census_year,
+  return (await pool.query(`WITH selected AS MATERIALIZED (
+    SELECT ccr.id,${distanceSql} distance_km,count(*) OVER() total
+    FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+    LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id ${clause}
+    ORDER BY ${order},ccr.id LIMIT $${values.length - 1} OFFSET $${values.length}
+  ) SELECT ccr.id, ccr.inep_course_code, ccr.original_name, ccr.degree, ccr.modality, ccr.dimension, ccr.free_indicator, ccr.census_year,
     ccr.daytime_seats,ccr.nighttime_seats,
     c.id course_id,c.slug course_slug,c.cine_code,c.canonical_name,i.id institution_id,i.name institution_name,i.acronym,i.slug institution_slug,
     i.education_network,i.administrative_category,i.academic_organization,m.name municipality_name,m.slug municipality_slug,s.abbreviation state_abbreviation,
-    m.reference_longitude lng,m.reference_latitude lat,m.location_note,${distanceSql} distance_km,
+    m.reference_longitude lng,m.reference_latitude lat,m.location_note,selected.distance_km,
     src.name source_name,src.canonical_url source_url,ss.imported_at,
-    ccr.census_seats,ccr.enrolled,count(*) OVER() total
-    FROM course_catalog_records ccr JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
+    ccr.census_seats,ccr.enrolled,selected.total
+    FROM selected JOIN course_catalog_records ccr ON ccr.id=selected.id JOIN courses c ON c.id=ccr.course_id JOIN institutions i ON i.id=ccr.institution_id
     LEFT JOIN municipalities m ON m.id=ccr.municipality_id LEFT JOIN states s ON s.id=m.state_id
-    LEFT JOIN source_snapshots ss ON ss.id=ccr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id ${clause}
-    ORDER BY ${order}
-    LIMIT $${values.length - 1} OFFSET $${values.length}`, values)).rows;
+    LEFT JOIN source_snapshots ss ON ss.id=ccr.snapshot_id LEFT JOIN sources src ON src.id=ss.source_id
+    ORDER BY ${order},ccr.id`, values)).rows;
 }
 
 export async function searchCatalogMap(filters) {
@@ -239,7 +253,7 @@ export async function listOfferings({ page, limit, q, city, state, modality, deg
   return (await pool.query(`SELECT o.*,c.canonical_name,c.slug course_slug,i.name institution_name,i.slug institution_slug,i.acronym,
     COALESCE(cp.name,p.name) campus_name,COALESCE(cp.address,p.address) campus_address,COALESCE(cp.latitude,p.latitude) latitude,COALESCE(cp.longitude,p.longitude) longitude,
     CASE WHEN cp.id IS NOT NULL THEN cp.location_status ELSE p.status END location_status,m.name municipality_name,s.abbreviation state_abbreviation,
-    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at,count(*) OVER() total
+    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at,sr.raw_payload->>'notice' source_notice,sr.raw_payload->>'note' source_note,sr.raw_payload->>'reportedShift' reported_shift,count(*) OVER() total
     FROM course_offerings o JOIN courses c ON c.id=o.course_id JOIN institutions i ON i.id=o.institution_id
     LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN poles p ON p.id=o.pole_id
     LEFT JOIN municipalities m ON m.id=COALESCE(cp.municipality_id,p.municipality_id) LEFT JOIN states s ON s.id=m.state_id
@@ -251,7 +265,7 @@ export async function findOffering(id) {
   return (await pool.query(`SELECT o.*,c.canonical_name,c.slug course_slug,i.name institution_name,i.slug institution_slug,
     i.acronym,COALESCE(cp.name,p.name) campus_name,COALESCE(cp.address,p.address) campus_address,COALESCE(cp.latitude,p.latitude) latitude,COALESCE(cp.longitude,p.longitude) longitude,
     CASE WHEN cp.id IS NOT NULL THEN cp.location_status ELSE p.status END location_status,m.name municipality_name,s.abbreviation state_abbreviation,
-    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at
+    src.name source_name,src.canonical_url source_url,ss.reference_period,ss.imported_at,sr.raw_payload->>'notice' source_notice,sr.raw_payload->>'note' source_note,sr.raw_payload->>'reportedShift' reported_shift
     FROM course_offerings o JOIN courses c ON c.id=o.course_id JOIN institutions i ON i.id=o.institution_id
     LEFT JOIN campuses cp ON cp.id=o.campus_id LEFT JOIN poles p ON p.id=o.pole_id
     LEFT JOIN municipalities m ON m.id=COALESCE(cp.municipality_id,p.municipality_id) LEFT JOIN states s ON s.id=m.state_id
