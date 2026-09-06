@@ -11,6 +11,7 @@ import { VerifiedOfferingCard } from '../components/VerifiedOfferingCard.jsx';
 import { api,queryString } from '../services/api.js';
 import { readSearchFilters } from '../lib/searchParams.js';
 import {calculateCompatibility,readCompassProfile} from '../lib/compass.js';
+import {formatCount} from '../lib/display.js';
 
 export function SearchPage(){
   const [params,setParams]=useSearchParams();const [active,setActive]=useState(null);const [radius,setRadius]=useState(25);const [mode,setMode]=useState('list');const [userLocation,setUserLocation]=useState(null);
@@ -31,7 +32,7 @@ export function SearchPage(){
     <div className="search-toolbar"><SearchBar key={`${filters.q}|${filters.city}|${filters.state}`} initialCourse={filters.q} initialCity={filters.city||filters.state}/></div>
     <div className={`search-body ${mode==='map'?'map-mode':''}`}>
       <div className="mobile-toggle" aria-label="Visualização dos resultados"><button className={mode==='list'?'active':''} onClick={()=>showMode('list')}><List size={17}/> Lista</button><button className={mode==='map'?'active':''} onClick={()=>showMode('map')}><Map size={17}/> Mapa</button></div>
-      <section className="results-panel" aria-live="polite"><div className="results-meta"><h1>{query.isLoading?'Buscando…':`${pagination?.total||0} registros encontrados`}</h1><small>Censo INEP 2024 · retrato histórico nacional</small></div>
+      <section className="results-panel" aria-busy={query.isLoading}><p className="sr-only" role="status">{query.isLoading?'Buscando cursos e faculdades…':`${formatCount(pagination?.total||0)} registros encontrados`}</p><div className="results-meta"><h1>{query.isLoading?'Buscando…':`${formatCount(pagination?.total||0)} registros encontrados`}</h1><small>Censo INEP 2024 · retrato histórico nacional</small></div>
         <div className="catalog-scope-note"><AlertCircle size={17}/><span><strong>O que está nesta busca:</strong> registros do Censo 2024.{userLocation?' A lista está ordenada pela distância aproximada entre você e o município informado no Censo.':' Cursos autorizados ou iniciados depois desse período entram por fontes oficiais complementares após verificação.'}</span></div>
         {compass&&<div className="compass-search-note"><Compass size={18}/><div><strong>Bússola ativa</strong><span>A compatibilidade considera somente suas preferências e os dados disponíveis. Não é ranking de qualidade.</span></div></div>}
         <SearchFilters filters={filters} onChange={change} onClear={clearFilters}/>

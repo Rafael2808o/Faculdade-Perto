@@ -3,6 +3,7 @@ import * as service from '../services/catalogService.js';
 export const listInstitutions = async (req,res,next) => { try { res.json(await service.getInstitutions(req.validated.query)); } catch (e) { next(e); } };
 export const getInstitution = async (req,res,next) => { try { res.json({data:await service.getInstitution(req.validated.params.id,req.validated.query)}); } catch (e) { next(e); } };
 export const listCourses = async (req,res,next) => { try { res.json(await service.getCourses(req.validated.query)); } catch (e) { next(e); } };
+export const listMunicipalities = async (req,res,next) => { try { res.json(await service.getMunicipalities(req.validated.query)); } catch (e) { next(e); } };
 export const search = async (req,res,next) => { try { res.json(await service.search(req.validated.query)); } catch (e) { next(e); } };
 export const searchMap = async (req,res,next) => { try { res.json(await service.searchMap(req.validated.query)); } catch (e) { next(e); } };
 export const getRecord = async (req,res,next) => { try { res.json({data:await service.getCatalogRecord(req.validated.params.id)}); } catch (e) { next(e); } };

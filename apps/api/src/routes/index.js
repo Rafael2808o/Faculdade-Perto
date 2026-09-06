@@ -9,7 +9,7 @@ import { validate } from '../middlewares/validate.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { getAdmissionHistory } from '../services/admissionHistoryService.js';
 import { admissionHistoryQuery, admissionPossibilityBody } from './schemas.js';
-import { contactBody, correctionBody, correctionReviewBody, courseQuery, cutoffQuery, enemBody, idParams, institutionQuery, loginBody, nearbyQuery, numericIdParams, offeringQuery, paginationSchema, planBody, registerBody, searchQuery } from './schemas.js';
+import { contactBody, correctionBody, correctionReviewBody, courseQuery, cutoffQuery, enemBody, idParams, institutionQuery, loginBody, municipalityQuery, nearbyQuery, numericIdParams, offeringQuery, paginationSchema, planBody, registerBody, searchQuery } from './schemas.js';
 
 const writeLimiter = rateLimit({ windowMs:env.RATE_LIMIT_WINDOW_MS, limit:env.RATE_LIMIT_MAX, standardHeaders:'draft-8', legacyHeaders:false, message:{error:{code:'MUITAS_TENTATIVAS',message:'Muitas mensagens foram enviadas deste endereço.',hint:'Aguarde alguns minutos antes de tentar novamente.'}} });
 const loginLimiter = rateLimit({ windowMs:env.RATE_LIMIT_WINDOW_MS, limit:10, standardHeaders:'draft-8', legacyHeaders:false, skipSuccessfulRequests:true, message:{error:{code:'MUITAS_TENTATIVAS',message:'Muitas tentativas de acesso foram feitas deste endereço.',hint:'Aguarde alguns minutos antes de tentar novamente.'}} });
@@ -21,6 +21,7 @@ apiRouter.get('/institutions/:id',validate(idParams,'params'),validate(paginatio
 apiRouter.get('/campuses',validate(paginationSchema),(_req,res)=>res.json({data:[],notice:'Campi aguardam uma fonte oficial complementar; a sede da IES não é tratada como campus.'}));
 apiRouter.get('/campuses/nearby',validate(nearbyQuery),catalog.nearby);
 apiRouter.get('/courses',validate(courseQuery),catalog.listCourses);
+apiRouter.get('/municipalities',validate(municipalityQuery),catalog.listMunicipalities);
 apiRouter.get('/offerings',validate(offeringQuery),catalog.listOfferings);
 apiRouter.get('/offerings/:id',validate(idParams,'params'),catalog.getOffering);
 apiRouter.get('/catalog-records/:id',validate(idParams,'params'),catalog.getRecord);

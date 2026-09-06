@@ -5,6 +5,7 @@ const httpUrl = z.string().max(500).refine((value)=>{try{return ['http:','https:
 export const paginationSchema = z.object({ page:z.coerce.number().int().min(1).default(1), limit:z.coerce.number().int().min(1).max(100).default(20) }).passthrough();
 export const institutionQuery = paginationSchema.extend({ q:text, state:z.string().trim().length(2).optional(), city:text, network:z.enum(['publica','privada']).optional() });
 export const courseQuery = paginationSchema.extend({ q:text, degree:z.enum(['bacharelado','licenciatura','tecnologo','abi','nao_confirmado']).optional(), modality:z.enum(['presencial','ead']).optional() });
+export const municipalityQuery=paginationSchema.extend({q:z.string().trim().min(2).max(120),state:z.string().trim().length(2).transform(value=>value.toUpperCase()).optional()});
 export const searchQuery = courseQuery.extend({
   state:z.string().trim().length(2).optional(), city:text, network:z.enum(['publica','privada']).optional(),
   organization:z.enum(['universidade','centro_universitario','faculdade','instituto_federal','cefet']).optional(),

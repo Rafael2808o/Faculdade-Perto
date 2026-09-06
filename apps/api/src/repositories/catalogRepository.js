@@ -118,6 +118,29 @@ export async function listCourses({ page, limit, q, degree, modality }) {
     ORDER BY ${ordering},c.id`, values)).rows;
 }
 
+export async function listMunicipalities({page,limit,q,state}){
+  const values=[];
+  const where=[];
+  let exactParam,prefixParam;
+  if(q){
+    const normalized=foldText(q);
+    values.push(`%${normalized}%`);
+    where.push(`${foldedSql('m.name')} LIKE $${values.length}`);
+    values.push(normalized);exactParam=`$${values.length}`;
+    values.push(`${normalized}%`);prefixParam=`$${values.length}`;
+  }
+  if(state){values.push(state.toUpperCase());where.push(`s.abbreviation=$${values.length}`);}
+  const clause=where.length?`WHERE ${where.join(' AND ')}`:'';
+  values.push(limit,(page-1)*limit);
+  const limitParam=`$${values.length-1}`,offsetParam=`$${values.length}`;
+  const order=q?`CASE WHEN ${foldedSql('m.name')}=${exactParam} THEN 0 WHEN ${foldedSql('m.name')} LIKE ${prefixParam} THEN 1 ELSE 2 END,m.name,s.abbreviation`:'m.name,s.abbreviation';
+  return (await pool.query(`SELECT m.name,m.slug,s.abbreviation state_abbreviation,count(ccr.id)::int record_count,count(*) OVER() total
+    FROM municipalities m JOIN states s ON s.id=m.state_id
+    LEFT JOIN course_catalog_records ccr ON ccr.municipality_id=m.id
+    ${clause} GROUP BY m.id,m.name,m.slug,s.abbreviation
+    ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}`,values)).rows;
+}
+
 async function searchCatalogByName({ values, groupingValues, where, distanceSql, page, limit, queryFiltered }) {
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   let groups;

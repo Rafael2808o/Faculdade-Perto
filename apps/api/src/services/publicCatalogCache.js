@@ -32,7 +32,7 @@ export function createPublicCatalogCache({ ttlMs = 120000, maxEntries = 128, max
   };
 }
 
-const cacheable = new Set(['listInstitutions', 'listCourses', 'searchCatalog', 'searchCatalogMap', 'findInstitution', 'listInstitutionCourses', 'sitemapRecordCount', 'sitemapCoreData']);
+const cacheable = new Set(['listInstitutions', 'listCourses', 'listMunicipalities', 'searchCatalog', 'searchCatalogMap', 'findInstitution', 'listInstitutionCourses', 'sitemapRecordCount', 'sitemapCoreData']);
 export function publicCatalogCacheKey(name, args) {
   if (!cacheable.has(name)) return null;
   if (args.some(arg => arg && typeof arg === 'object' && (arg.lat !== undefined || arg.lng !== undefined))) return null;

@@ -21,6 +21,21 @@ try{
   await page.goto(baseUrl,{waitUntil:'networkidle',timeout:120000});
   assert(await page.getByRole('heading',{name:/encontre seu caminho/i}).isVisible(),'A página inicial não apresentou o conteúdo principal.');
   assert(await page.locator('.vite-error-overlay').count()===0,'O Vite exibiu uma sobreposição de erro.');
+  const themeToggle=page.getByRole('button',{name:'Ativar modo escuro'});
+  await themeToggle.click();
+  assert(await page.evaluate(()=>document.documentElement.dataset.theme)==='dark','O modo escuro não foi aplicado à interface.');
+  assert(await page.evaluate(()=>localStorage.getItem('faculdade-perto:theme'))==='dark','A preferência de modo escuro não foi persistida.');
+  await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  assert(await page.evaluate(()=>document.documentElement.dataset.theme)==='light','O modo claro não foi restaurado.');
+  await page.getByRole('button',{name:'Ativar modo escuro'}).click();
+
+  const citySearch=page.getByRole('combobox',{name:'Cidade ou UF'});
+  await citySearch.fill('Andradina');
+  await page.getByRole('option',{name:/Andradina — SP/i}).waitFor({timeout:120000});
+  await citySearch.press('ArrowDown');await citySearch.press('Enter');
+  assert(await citySearch.inputValue()==='Andradina, SP','A sugestão de cidade não preservou município e UF.');
+  await page.getByRole('button',{name:'Buscar agora'}).click();
+  await page.waitForURL(url=>url.searchParams.get('city')==='Andradina'&&url.searchParams.get('state')==='SP',{timeout:120000});
 
   await page.goto(`${baseUrl}/buscar?city=Andradina`,{waitUntil:'domcontentloaded',timeout:120000});
   await page.getByRole('heading',{name:'8 cursos em fontes oficiais'}).waitFor({timeout:120000});
@@ -28,6 +43,7 @@ try{
   await page.waitForTimeout(1000);
   assert(await page.getByText('Medicina',{exact:true}).first().isVisible(),'Medicina não apareceu em Andradina.');
   assert(await page.getByText('Agronomia',{exact:true}).first().isVisible(),'Agronomia não apareceu em Andradina.');
+  assert(!/\bnao_confirmado\b/i.test(await page.locator('.results-panel').innerText()),'A busca exibiu código interno em vez de texto compreensível.');
   const mapLayout=await page.evaluate(()=>{
     const names=['.radius-control','.map-viewport','.map-result-strip','.map-notice'];
     const rects=Object.fromEntries(names.map(name=>{const r=document.querySelector(name)?.getBoundingClientRect();return [name,r&&{top:r.top,bottom:r.bottom,left:r.left,right:r.right}];}));
@@ -57,11 +73,36 @@ try{
   assert(!(await page.locator('body').innerText()).toLowerCase().includes('você vai passar'),'A interface apresentou uma promessa de aprovação.');
   assert(await page.getByRole('link',{name:/relatório oficial/i}).first().getAttribute('href').then(value=>value?.startsWith('https://www.ufmg.br/sisu/')),'A fonte oficial não ficou acessível no resultado.');
   await page.screenshot({path:resolve(output,'enem-possibilidades-desktop.png'),fullPage:true});
+
+  await page.goto(`${baseUrl}/bussola?intent=nearby`,{waitUntil:'networkidle',timeout:120000});
+  await page.getByLabel('Qual curso ou área você quer explorar?').fill('Medicina');
+  await page.getByRole('button',{name:'Continuar'}).click();
+  await page.getByLabel('Cidade de referência').fill('Andradina');
+  await page.getByLabel('Estado').selectOption('SP');
+  await page.getByLabel('Distância máxima desejada').selectOption('25');
+  await page.getByRole('button',{name:'Continuar'}).click();
+  await page.getByLabel('Modalidade').selectOption('presencial');
+  await page.getByLabel('Rede').selectOption('publica');
+  await page.getByRole('button',{name:'Continuar'}).click();
+  await page.getByText('Resumo das suas escolhas').waitFor();
+  await page.getByRole('button',{name:'Ver caminhos compatíveis'}).click();
+  await page.waitForURL(url=>url.pathname==='/buscar'&&url.searchParams.get('compass')==='1'&&url.searchParams.get('q')==='Medicina'&&url.searchParams.get('city')==='Andradina'&&url.searchParams.get('state')==='SP',{timeout:120000});
+  await page.getByText('Bússola ativa').waitFor({timeout:120000});
+
+  await page.goto(`${baseUrl}/buscar?q=xpto-improvavel-zqv`,{waitUntil:'domcontentloaded',timeout:120000});
+  await page.getByText('Nenhum curso encontrado', {exact:false}).waitFor({timeout:120000});
+
+  await page.goto(`${baseUrl}/contato`,{waitUntil:'networkidle',timeout:120000});
+  assert(!(await page.locator('form').evaluate(form=>form.checkValidity())),'O formulário de contato aceitou campos obrigatórios vazios.');
+  await page.goto(`${baseUrl}/corrigir`,{waitUntil:'networkidle',timeout:120000});
+  assert(!(await page.locator('form').evaluate(form=>form.checkValidity())),'O formulário de correção aceitou uma descrição vazia.');
   await desktop.close();
 
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,locale:'pt-BR'});
   const mobilePage=await mobile.newPage();watch(mobilePage,'mobile');
   await mobilePage.goto(`${baseUrl}/buscar?city=Andradina`,{waitUntil:'domcontentloaded',timeout:120000});
+  await mobilePage.getByRole('button',{name:'Ativar modo escuro'}).click();
+  assert(await mobilePage.evaluate(()=>document.documentElement.dataset.theme)==='dark','O modo escuro não respondeu no celular.');
   await mobilePage.getByRole('heading',{name:'8 cursos em fontes oficiais'}).waitFor({timeout:120000});
   await mobilePage.getByRole('button',{name:'Mapa'}).click();
   await mobilePage.locator('.map-viewport').waitFor();

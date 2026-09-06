@@ -51,6 +51,11 @@ export async function getCourses(filters) {
   return { data: rows.map(({total,...row}) => row), pagination: pagination(rows,filters.page,filters.limit) };
 }
 
+export async function getMunicipalities(filters){
+  const rows=await call('listMunicipalities',filters);
+  return {data:rows.map(({total,...row})=>({name:row.name,slug:row.slug,state:row.state_abbreviation,recordCount:Number(row.record_count)})),pagination:pagination(rows,filters.page,filters.limit)};
+}
+
 function searchDto(row) {
   const snapshot = snapshotFrom(row);
   return {
