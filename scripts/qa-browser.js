@@ -64,8 +64,16 @@ try{
   await page.screenshot({path:resolve(output,'busca-andradina-desktop.png'),fullPage:true});
 
   await page.goto(`${baseUrl}/enem`,{waitUntil:'networkidle',timeout:120000});
+  const darkScoreField=await page.locator('#score-languages').evaluate(input=>({
+    value:(input instanceof HTMLInputElement)?input.value:'',
+    color:getComputedStyle(input).color,
+    background:getComputedStyle(input.parentElement).backgroundColor,
+    caretColor:getComputedStyle(input).caretColor
+  }));
+  assert(darkScoreField.color!==darkScoreField.background&&darkScoreField.background!=='rgb(255, 255, 255)'&&darkScoreField.caretColor!==darkScoreField.background,'A calculadora do Enem perdeu contraste para digitação no modo escuro.');
   const inputs={languages:'700,5',humanities:'710',naturalSciences:'720',mathematics:'730',essay:'800'};
   for(const [name,value] of Object.entries(inputs))await page.locator(`#score-${name}`).fill(value);
+  assert(await page.locator('#score-languages').inputValue()==='700,5','A calculadora não manteve a nota digitada.');
   await page.getByRole('button',{name:'Calcular minha média'}).click();
   await page.getByText('Onde sua nota esteve competitiva?').waitFor();
   await page.getByLabel('Curso ou instituição').fill('Medicina');

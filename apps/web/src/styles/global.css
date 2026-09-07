@@ -66,3 +66,9 @@ h1,h2,h3{font-weight:800}h1{letter-spacing:-.055em}h2{letter-spacing:-.045em}.si
 :root[data-theme='dark'] .data-popover{background:#06101c}:root[data-theme='dark'] .map-notice,:root[data-theme='dark'] .radius-control,:root[data-theme='dark'] .map-result-strip{background:rgba(17,28,45,.94)}
 :root[data-theme='dark'] .hero-preview{box-shadow:0 32px 80px rgba(0,0,0,.38)}
 @media(max-width:800px){.theme-toggle{margin-left:auto;margin-right:.45rem}.theme-toggle span{display:none}:root[data-theme='dark'] .nav,:root[data-theme='dark'] .mobile-toggle{background:rgba(9,17,31,.94)}:root[data-theme='dark'] .compass-actions{background:rgba(17,28,45,.94)}}
+
+/* Campos sempre usam uma superfície e uma tinta do mesmo tema. */
+input,select,textarea{color:var(--ink);caret-color:var(--primary)}
+option{background:var(--input-surface);color:var(--ink)}
+.form-field input,.form-field select,.form-field textarea{background:var(--input-surface)}
+:root .opportunities-form input,:root .opportunities-form select{background:var(--input-surface);color:var(--ink);caret-color:var(--primary)}
