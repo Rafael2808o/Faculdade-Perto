@@ -22,6 +22,7 @@
     "helmet": "^8.1.0",
     "pg": "^8.16.3",
     "pg-copy-streams": "^7.0.0",
+    "resend": "^6.26.0",
     "slugify": "^1.6.6",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.1.5"

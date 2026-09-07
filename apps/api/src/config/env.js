@@ -20,7 +20,17 @@ const schema = z.object({
   DATA_MODE: z.enum(['database','demo']).default(process.env.NODE_ENV === 'test' ? 'demo' : 'database'),
   TRUST_PROXY: z.string().default('false').transform((value) => value === 'true'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().positive().default(900000),
-  RATE_LIMIT_MAX: z.coerce.number().positive().default(30)
+  RATE_LIMIT_MAX: z.coerce.number().positive().default(30),
+  EMAIL_DELIVERY_ENABLED: z.string().default('false').transform((value) => value === 'true'),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().min(3).optional(),
+  EMAIL_REPLY_TO: z.string().email().optional(),
+  CONTACT_RECIPIENT: z.string().email().optional()
 });
 
-export const env = schema.parse(process.env);
+export const env = schema.superRefine((value, context) => {
+  if (!value.EMAIL_DELIVERY_ENABLED) return;
+  for (const key of ['RESEND_API_KEY', 'EMAIL_FROM', 'CONTACT_RECIPIENT']) {
+    if (!value[key]) context.addIssue({ code: 'custom', path: [key], message: `${key} é obrigatório quando o envio de e-mail está ativo.` });
+  }
+}).parse(process.env);

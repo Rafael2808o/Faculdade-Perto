@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/wrangler.json",
+  "name": "faculdade-perto",
+  "compatibility_date": "2026-09-06",
+  "pages_build_output_dir": "./dist",
+  "vars": {
+    "UPSTREAM_API_ORIGIN": "https://faculdade-perto.onrender.com"
+  }
+}
