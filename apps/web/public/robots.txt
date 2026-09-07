@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /obrigado
+Sitemap: https://faculdade-perto.pages.dev/sitemap.xml
