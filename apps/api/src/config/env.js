@@ -28,9 +28,19 @@ const schema = z.object({
   CONTACT_RECIPIENT: z.string().email().optional()
 });
 
-export const env = schema.superRefine((value, context) => {
-  if (!value.EMAIL_DELIVERY_ENABLED) return;
-  for (const key of ['RESEND_API_KEY', 'EMAIL_FROM', 'CONTACT_RECIPIENT']) {
-    if (!value[key]) context.addIssue({ code: 'custom', path: [key], message: `${key} é obrigatório quando o envio de e-mail está ativo.` });
-  }
-}).parse(process.env);
+const parsedEnv = schema.parse(process.env);
+const missingEmailSettings = ['RESEND_API_KEY', 'EMAIL_FROM', 'CONTACT_RECIPIENT'].filter((key) => !parsedEnv[key]);
+
+if (parsedEnv.EMAIL_DELIVERY_ENABLED && missingEmailSettings.length > 0) {
+  console.warn(JSON.stringify({
+    level: 'warn',
+    event: 'email_delivery_disabled',
+    message: 'A configuração de e-mail está incompleta; o envio foi desativado sem interromper a API.',
+    missing: missingEmailSettings
+  }));
+}
+
+export const env = {
+  ...parsedEnv,
+  EMAIL_DELIVERY_ENABLED: parsedEnv.EMAIL_DELIVERY_ENABLED && missingEmailSettings.length === 0
+};
