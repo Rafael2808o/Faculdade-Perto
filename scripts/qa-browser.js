@@ -25,6 +25,12 @@ try{
   await themeToggle.click();
   assert(await page.evaluate(()=>document.documentElement.dataset.theme)==='dark','O modo escuro não foi aplicado à interface.');
   assert(await page.evaluate(()=>localStorage.getItem('faculdade-perto:theme'))==='dark','A preferência de modo escuro não foi persistida.');
+  const previewPlaceColors=await page.locator('.preview-place').evaluate(node=>{
+    const title=node.querySelector('strong');
+    const description=node.querySelector('span');
+    return {background:getComputedStyle(node).backgroundColor,title:getComputedStyle(title).color,description:getComputedStyle(description).color};
+  });
+  assert(previewPlaceColors.background==='rgb(255, 255, 255)'&&previewPlaceColors.title==='rgb(16, 42, 67)'&&previewPlaceColors.description==='rgb(82, 101, 125)','O resumo branco da base nacional perdeu contraste no modo escuro.');
   await page.getByRole('button',{name:'Ativar modo claro'}).click();
   assert(await page.evaluate(()=>document.documentElement.dataset.theme)==='light','O modo claro não foi restaurado.');
   await page.getByRole('button',{name:'Ativar modo escuro'}).click();
