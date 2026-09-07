@@ -14,7 +14,11 @@ export async function submitContact(data) {
   let emailStatus = 'nao_configurado';
   try {
     const delivery = await sendContactEmails(data);
-    emailStatus = delivery.enabled ? 'enviado' : 'nao_configurado';
+    emailStatus = !delivery.enabled
+      ? 'nao_configurado'
+      : delivery.confirmationId
+        ? 'enviado'
+        : 'notificacao_enviada';
   } catch (error) {
     emailStatus = 'pendente';
     console.error(JSON.stringify({ level: 'error', event: 'contact_email_failed', message: error.message, contactId: result.id }));
@@ -25,7 +29,9 @@ export async function submitContact(data) {
     emailStatus,
     message: emailStatus === 'enviado'
       ? 'Mensagem recebida. Enviamos uma confirmação para o e-mail informado.'
-      : 'Mensagem recebida. Nossa equipe fará a triagem e responderá pelo e-mail informado.'
+      : emailStatus === 'notificacao_enviada'
+        ? 'Mensagem recebida. Nossa equipe já foi avisada e responderá pelo e-mail informado.'
+        : 'Mensagem recebida. Nossa equipe fará a triagem e responderá pelo e-mail informado.'
   };
 }
 

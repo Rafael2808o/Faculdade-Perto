@@ -44,7 +44,7 @@ export function contactTemplates(contact) {
 
 export async function sendContactEmails(contact) {
   const config = settings();
-  if (!config) return { enabled: false, notificationId: null, confirmationId: null };
+  if (!config) return { enabled: false, notificationId: null, confirmationId: null, confirmationError: null };
 
   const templates = contactTemplates(contact);
   const notification = await send(config.client, {
@@ -55,13 +55,28 @@ export async function sendContactEmails(contact) {
     text: templates.notification.text,
     html: templates.notification.html
   });
-  const confirmation = await send(config.client, {
-    from: config.from,
-    to: [contact.email],
-    replyTo: config.replyTo,
-    subject: templates.confirmation.subject,
-    text: templates.confirmation.text,
-    html: templates.confirmation.html
-  });
-  return { enabled: true, notificationId: notification?.id || null, confirmationId: confirmation?.id || null };
+  try {
+    const confirmation = await send(config.client, {
+      from: config.from,
+      to: [contact.email],
+      replyTo: config.replyTo,
+      subject: templates.confirmation.subject,
+      text: templates.confirmation.text,
+      html: templates.confirmation.html
+    });
+    return {
+      enabled: true,
+      notificationId: notification?.id || null,
+      confirmationId: confirmation?.id || null,
+      confirmationError: null
+    };
+  } catch (error) {
+    console.warn(JSON.stringify({ level: 'warn', event: 'contact_confirmation_pending', message: error.message }));
+    return {
+      enabled: true,
+      notificationId: notification?.id || null,
+      confirmationId: null,
+      confirmationError: error.message
+    };
+  }
 }
