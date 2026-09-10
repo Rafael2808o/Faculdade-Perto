@@ -141,6 +141,18 @@ export async function listMunicipalities({page,limit,q,state}){
     ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}`,values)).rows;
 }
 
+export async function findMunicipalityReference({city,state}){
+  const location=parseLocationFilter(city,state);
+  if(!location.city)return null;
+  const values=[foldText(location.city)];
+  const where=[`${foldedSql('m.name')}=$1`,'m.reference_latitude IS NOT NULL','m.reference_longitude IS NOT NULL'];
+  if(location.state){values.push(location.state);where.push(`s.abbreviation=$${values.length}`);}
+  const result=await pool.query(`SELECT m.name,s.abbreviation state_abbreviation,m.reference_latitude lat,m.reference_longitude lng
+    FROM municipalities m JOIN states s ON s.id=m.state_id
+    WHERE ${where.join(' AND ')} LIMIT 1`,values);
+  return result.rows[0]||null;
+}
+
 async function searchCatalogByName({ values, groupingValues, where, distanceSql, page, limit, queryFiltered }) {
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   let groups;

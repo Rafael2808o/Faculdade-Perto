@@ -1,7 +1,7 @@
-.scenario-block{margin-top:1rem;padding:1rem;border:1px solid var(--line);border-radius:var(--radius);background:#f8fafc}
+.scenario-block{margin-top:1rem;padding:1rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper)}
 .scenario-block>div:first-child p{margin:.25rem 0 1rem;color:var(--ink-soft);font-size:.85rem}
 .scenario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
-.scenario-grid button{position:relative;display:flex;flex-direction:column;gap:.3rem;padding:.85rem 2rem .85rem .85rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.scenario-grid button{position:relative;display:flex;flex-direction:column;gap:.3rem;padding:.85rem 2rem .85rem .85rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper-raised);color:var(--ink);text-align:left;cursor:pointer}
 .scenario-grid button:hover{border-color:var(--primary)}
 .scenario-grid button span{font-weight:800}
 .scenario-grid button small{color:var(--ink-soft)}

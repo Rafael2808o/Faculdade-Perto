@@ -21,7 +21,7 @@ export function AdmissionPossibilities({scores,trainee}) {
   const field=(name,value)=>setGoal(current=>({...current,[name]:value}));
   const choose=item=>setSelected(current=>current.some(value=>value.id===item.id)?current.filter(value=>value.id!==item.id):current.length<4?[...current,item]:current);
   return <section className="enem-opportunities" aria-labelledby="opportunities-title">
-    <div className="opportunities-intro"><span><Search size={18}/> Próximo passo</span><h2 id="opportunities-title">Onde sua nota esteve competitiva?</h2><p>Compare suas cinco notas com os pesos oficiais de cada curso. O resultado é histórico e educacional: não prevê aprovação nem valida sua elegibilidade às cotas.</p></div>
+    <div className="opportunities-intro"><span><Search size={18}/> Próximo passo</span><h2 id="opportunities-title">Onde sua nota esteve competitiva?</h2><p>Um algoritmo cruza suas cinco notas com os pesos oficiais de cada curso e mede a diferença para o corte publicado. O resultado é histórico e educacional: não prevê aprovação nem valida sua elegibilidade às cotas.</p></div>
     {coverage&&<div className="history-coverage"><strong>Históricos disponíveis</strong><p>{coverage.institutions.length?coverage.institutions.map(item=>`${item.acronym||item.name} ${item.year}: ${item.courses} códigos, ${item.courseShifts} combinações de curso/turno, ${item.rounds} etapas e ${item.scenarios.toLocaleString('pt-BR')} cenários`).join(' · '):'Ainda não há relatórios oficiais importados.'}</p><small>{coverage.message}</small></div>}
     <form className="opportunities-form" onSubmit={event=>{event.preventDefault();setSelected([]);search();}}>
       <label><span>Curso ou instituição</span><input required value={goal.q} onChange={event=>field('q',event.target.value)} placeholder="Ex.: Medicina ou UFMG"/></label>
@@ -34,7 +34,7 @@ export function AdmissionPossibilities({scores,trainee}) {
       <button className="primary-button" disabled={busy} type="submit"><Search size={17}/>{busy?'Consultando histórico…':'Comparar com o histórico oficial'}</button>
     </form>
     {error&&<div className="form-error" role="alert">{error}</div>}
-    {response?.empty&&<div className="opportunities-empty" role="status"><ShieldCheck size={24}/><div><strong>{response.empty.message}</strong><p>{response.empty.hint}</p><a href="https://sisu.mec.gov.br/" target="_blank" rel="noreferrer">Consultar o portal oficial do SiSU</a></div></div>}
+    {response?.empty&&<div className="opportunities-empty" role="status"><ShieldCheck size={24}/><div><strong>{response.empty.message}</strong><p>{response.empty.hint}</p><p className="algorithm-note"><strong>O que já foi calculado:</strong> sua média foi calculada corretamente. A comparação só aparece quando há corte e pesos oficiais do mesmo processo seletivo; sem isso, não seria honesto estimar uma chance.</p><a href="https://sisu.mec.gov.br/" target="_blank" rel="noreferrer">Consultar o portal oficial do SiSU</a></div></div>}
     {response?.data?.length>0&&<div className="opportunity-results" aria-live="polite">
       <p>{response.pagination.total} cenários encontrados · página {response.pagination.page} de {response.pagination.totalPages}</p>
       {response.data.map(item=>{

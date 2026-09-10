@@ -76,12 +76,20 @@ function searchDto(row) {
 }
 
 export async function search(filters) {
-  const rows = await call('searchCatalog',filters);
+  let rows = await call('searchCatalog',filters);
+  let fallback=null;
+  if(!rows.length&&filters.q&&filters.city&&filters.lat===undefined&&filters.radiusKm===undefined){
+    const origin=await call('findMunicipalityReference',{city:filters.city,state:filters.state});
+    if(origin){
+      rows=await call('searchCatalog',{...filters,city:'',lat:Number(origin.lat),lng:Number(origin.lng),sort:'distance'});
+      if(rows.length)fallback={city:origin.name,state:origin.state_abbreviation,kind:'nearest'};
+    }
+  }
   if (!rows.length) {
     const place = filters.city || filters.state ? ` em ${filters.city || filters.state}` : '';
     return { data: [], pagination: pagination(rows,filters.page,filters.limit), empty: { message: `Nenhum curso encontrado${place}.`, hint: 'Tente remover um filtro, conferir a grafia ou buscar somente pelo nome do curso.' } };
   }
-  return { data: rows.map(searchDto), pagination: pagination(rows,filters.page,filters.limit) };
+  return { data: rows.map(searchDto), pagination: pagination(rows,filters.page,filters.limit), fallback };
 }
 
 export async function searchMap(filters) {
