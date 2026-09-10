@@ -5,7 +5,7 @@ vi.mock('../database/pool.js',()=>({pool:{query:vi.fn()}}));
 const { pool }=await import('../database/pool.js');
 const {
   administrativeCategoryValues,courseRelevanceOrderSql,exactCityMatchSql,foldedInstitutionSearchSql,
-  greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter,searchCatalog
+  greatCircleDistanceSql,institutionOrganizationValues,parseLocationFilter,rankCourseMatches,searchCatalog
 }=await import('./catalogRepository.js');
 
 describe('parseLocationFilter',()=>{
@@ -52,6 +52,12 @@ describe('parseLocationFilter',()=>{
   it('não mistura Andradina com Nova Andradina no filtro de cidade',()=>{
     expect(exactCityMatchSql()).toContain(' = ?');
     expect(exactCityMatchSql()).not.toContain('LIKE');
+  });
+
+  it('encontra um curso ignorando conectivos e pequenos erros de digitação',()=>{
+    const courses=[{id:'10',canonical_name:'Engenharia de Computação'},{id:'11',canonical_name:'Engenharia de Software'}];
+    expect(rankCourseMatches('Engenharia da Computação',courses).map(({id})=>id)).toEqual(['10']);
+    expect(rankCourseMatches('Engenhara de Computacao',courses).map(({id})=>id)).toEqual(['10']);
   });
 });
 

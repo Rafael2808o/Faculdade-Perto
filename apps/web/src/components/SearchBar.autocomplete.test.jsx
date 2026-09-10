@@ -7,16 +7,17 @@ import {api} from '../services/api.js';
 vi.mock('../services/api.js',()=>({api:vi.fn()}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 describe('sugestões da busca nacional',()=>{
-  it('consulta instituições e cursos e permite selecionar com teclado',async()=>{
-    api.mockImplementation((path)=>path.startsWith('/institutions')?Promise.resolve({data:[{id:'1',name:{value:'Universidade de São Paulo'},acronym:{value:'USP'},academicOrganization:{value:'Universidade'},headquarters:{value:{city:'São Paulo',state:'SP'}}}]}):Promise.resolve({data:[{id:'2',canonical_name:'Medicina',record_count:120,institution_count:42}]}));
+  it('prioriza cursos completos e permite selecionar com teclado',async()=>{
+    api.mockResolvedValue({data:[{id:'2',canonical_name:'Engenharia de Computação',record_count:120,institution_count:42}]});
     render(<MemoryRouter><SearchBar/></MemoryRouter>);
     const input=screen.getByRole('combobox',{name:'Curso ou faculdade'});
-    fireEvent.change(input,{target:{value:'USP'}});
-    await waitFor(()=>expect(screen.getAllByRole('option')).toHaveLength(2));
-    expect(api.mock.calls.some(([path])=>path.startsWith('/institutions')&&path.includes('q=USP'))).toBe(true);
-    expect(api.mock.calls.some(([path])=>path.startsWith('/courses')&&path.includes('q=USP'))).toBe(true);
+    fireEvent.change(input,{target:{value:'Engenharia da Computação'}});
+    await waitFor(()=>expect(screen.getAllByRole('option')).toHaveLength(1));
+    expect(screen.getByRole('option').textContent).toContain('Engenharia de Computação');
+    expect(api.mock.calls.some(([path])=>path.startsWith('/courses')&&path.includes('q=Engenharia'))).toBe(true);
+    expect(api.mock.calls.some(([path])=>path.startsWith('/institutions'))).toBe(false);
     fireEvent.keyDown(input,{key:'ArrowDown'});fireEvent.keyDown(input,{key:'Enter'});
-    expect(input.value).toBe('Universidade de São Paulo');
+    expect(input.value).toBe('Engenharia de Computação');
     expect(input.getAttribute('aria-expanded')).toBe('false');
   });
   it('sugere cidade com UF e preserva a cidade selecionada para a busca',async()=>{

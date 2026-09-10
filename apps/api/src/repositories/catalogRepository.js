@@ -40,6 +40,66 @@ export const foldedInstitutionSearchSql = () => `SELECT DISTINCT i.id FROM insti
 export const courseRelevanceOrderSql = (exactParam,prefixParam) => `CASE WHEN ${foldedSql('c.canonical_name')} = ${exactParam} THEN 0 WHEN ${foldedSql('c.canonical_name')} LIKE ${prefixParam} THEN 1 ELSE 2 END, c.canonical_name`;
 export const exactCityMatchSql = (column='m.name') => `${foldedSql(column)} = ?`;
 
+// Conectivos não diferenciam um curso. Ao ignorá-los, "Engenharia da
+// Computação" encontra o nome oficial "Engenharia de computação" sem criar
+// sinônimos artificiais no catálogo.
+const ignoredCourseWords = new Set(['a','as','o','os','de','da','do','das','dos','e','em','para','por']);
+
+export function courseSearchTokens(value) {
+  return foldText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token && !ignoredCourseWords.has(token));
+}
+
+function levenshtein(left,right) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  let previous=Array.from({length:right.length+1},(_,index)=>index);
+  for(let row=1;row<=left.length;row+=1){
+    const current=[row];
+    for(let column=1;column<=right.length;column+=1){
+      current[column]=Math.min(current[column-1]+1,previous[column]+1,previous[column-1]+(left[row-1]===right[column-1]?0:1));
+    }
+    previous=current;
+  }
+  return previous[right.length];
+}
+
+function tokenMatches(queryToken,courseToken) {
+  if (courseToken.includes(queryToken) || queryToken.includes(courseToken)) return true;
+  if (queryToken.length < 4 || courseToken.length < 4) return false;
+  const tolerance=queryToken.length >= 8 ? 2 : 1;
+  return levenshtein(queryToken,courseToken) <= tolerance;
+}
+
+/**
+ * Ranks the small official course vocabulary in memory. This makes course
+ * lookup forgiving to accents, connector words and one or two typing errors,
+ * while keeping the database query itself indexed by the matched course ids.
+ */
+export function rankCourseMatches(query,courses) {
+  const queryTokens=courseSearchTokens(query);
+  if (!queryTokens.length) return [];
+  const normalizedQuery=queryTokens.join(' ');
+  return courses.map((course)=>{
+    const courseTokens=courseSearchTokens(course.canonical_name);
+    const normalizedCourse=courseTokens.join(' ');
+    const matched=queryTokens.filter((token)=>courseTokens.some((courseToken)=>tokenMatches(token,courseToken))).length;
+    if (matched !== queryTokens.length) return null;
+    const exact=normalizedCourse===normalizedQuery;
+    const prefix=normalizedCourse.startsWith(normalizedQuery);
+    return {...course,matchScore:(exact?300:0)+(prefix?120:0)+(matched*20)-Math.max(0,courseTokens.length-queryTokens.length)};
+  }).filter(Boolean).sort((left,right)=>right.matchScore-left.matchScore||left.canonical_name.localeCompare(right.canonical_name,'pt-BR')||Number(left.id)-Number(right.id));
+}
+
+async function findMatchingCourses(query) {
+  const courses=(await pool.query('SELECT id,canonical_name FROM courses ORDER BY canonical_name,id')).rows;
+  return rankCourseMatches(query,courses);
+}
+
 export function greatCircleDistanceSql(latitudeSql,longitudeSql,latitudeParam,longitudeParam) {
   return `6371.0::float8 * 2.0::float8 * asin(sqrt(power(sin(radians(${latitudeSql}::float8-${latitudeParam}::float8)/2.0::float8),2.0::float8)+cos(radians(${latitudeParam}::float8))*cos(radians(${latitudeSql}::float8))*power(sin(radians(${longitudeSql}::float8-${longitudeParam}::float8)/2.0::float8),2.0::float8)))`;
 }
@@ -95,10 +155,11 @@ export async function listCourses({ page, limit, q, degree, modality }) {
   let ordering = 'c.canonical_name';
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
   if (q) {
-    const normalizedQuery=foldText(q);
-    add(`${foldedSql('c.canonical_name')} LIKE ?`, `%${normalizedQuery}%`);
-    values.push(normalizedQuery,`${normalizedQuery}%`);
-    ordering=courseRelevanceOrderSql(`$${values.length-1}`,`$${values.length}`);
+    const matches=await findMatchingCourses(q);
+    if (!matches.length) return [];
+    const courseIds=matches.map(({id})=>String(id));
+    add('c.id = ANY(?::bigint[])',courseIds);
+    ordering=`array_position($${values.length}::bigint[],c.id),c.canonical_name`;
   }
   if (degree) add(`ccr.degree = ?`, degree);
   if (modality) add(`ccr.modality = ?`, modality);
@@ -242,23 +303,27 @@ export async function searchCatalog({ q, city, state, network, modality, degree,
   let relevanceOrder = 'ccr.id';
   const add = (sql, value) => { values.push(value); where.push(sql.replace('?', `$${values.length}`)); };
   if (q) {
-    const normalizedQuery = foldText(q);
-    const like=`%${normalizedQuery}%`;
-    const [matchedCourses,matchedInstitutions]=await Promise.all([
-      pool.query(`SELECT id FROM courses WHERE ${foldedSql('canonical_name')} LIKE $1`,[like]),
-      pool.query(foldedInstitutionSearchSql(),[like])
-    ]);
-    const courseIds=matchedCourses.rows.map(({id})=>String(id));
-    const institutionIds=matchedInstitutions.rows.map(({id})=>String(id));
-    if (!courseIds.length&&!institutionIds.length) return [];
-    if (courseIds.length&&institutionIds.length) {
-      values.push(courseIds,institutionIds);
-      where.push(`(ccr.course_id = ANY($${values.length-1}::bigint[]) OR ccr.institution_id = ANY($${values.length}::bigint[]))`);
-    } else if (courseIds.length) add('ccr.course_id = ANY(?::bigint[])',courseIds);
-    else add('ccr.institution_id = ANY(?::bigint[])',institutionIds);
+    const matchedCourses=await findMatchingCourses(q);
+    const courseIds=matchedCourses.map(({id})=>String(id));
+    // A busca por curso é deliberadamente prioritária: quem procura
+    // "Engenharia da Computação" não deve receber escolas cujo nome contém
+    // "engenharia" antes das ofertas do curso.
+    if (courseIds.length) {
+      add('ccr.course_id = ANY(?::bigint[])',courseIds);
+    } else {
+      const like=`%${foldText(q)}%`;
+      const matchedInstitutions=await pool.query(foldedInstitutionSearchSql(),[like]);
+      const institutionIds=matchedInstitutions.rows.map(({id})=>String(id));
+      if (!institutionIds.length) return [];
+      add('ccr.institution_id = ANY(?::bigint[])',institutionIds);
+    }
     if (sort === 'relevance') {
-      values.push(normalizedQuery, `${normalizedQuery}%`);
-      relevanceOrder = `CASE WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length - 1} THEN 0 WHEN ${foldedSql('i.name')} LIKE $${values.length - 1} THEN 1 WHEN ${foldedSql('c.canonical_name')} LIKE $${values.length} THEN 2 WHEN ${foldedSql('i.name')} LIKE $${values.length} THEN 3 ELSE 4 END,c.canonical_name,i.name`;
+      if (courseIds.length) relevanceOrder=`array_position($1::bigint[],ccr.course_id),c.canonical_name,i.name`;
+      else {
+        const normalizedQuery=foldText(q);
+        values.push(normalizedQuery, `${normalizedQuery}%`);
+        relevanceOrder = `CASE WHEN ${foldedSql('i.name')} LIKE $${values.length - 1} THEN 0 WHEN ${foldedSql('i.name')} LIKE $${values.length} THEN 1 ELSE 2 END,i.name,c.canonical_name`;
+      }
     }
   }
   const location = parseLocationFilter(city, state);
